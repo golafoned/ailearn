@@ -13,9 +13,10 @@ function scoreAnswers(test, answers) {
 }
 
 export class TestGenerationService {
-  async generateFromText({ sourceText, filename, title, model, questionCount, difficulty, timeLimitSeconds, expiresInMinutes, extraInstructions, params }) {
+  async generateFromText({ sourceText, filename, title, questionCount, difficulty, timeLimitSeconds, expiresInMinutes, extraInstructions, params }) {
     const expires_at = new Date(Date.now() + expiresInMinutes * 60000).toISOString();
     const code = generateCode();
+    const model = process.env.OPENROUTER_MODEL || 'openai/gpt-4o-mini';
 
     const prompt = this._buildPrompt({ sourceText, title, questionCount, difficulty, extraInstructions });
     const generationParams = { questionCount, difficulty, timeLimitSeconds, expiresInMinutes, ...params };
@@ -33,7 +34,7 @@ export class TestGenerationService {
       title: title || 'Generated Test',
       source_filename: filename || null,
       source_text: sourceText.slice(0, 20000),
-      model,
+  model,
       params_json: generationParams,
       questions_json: questions,
       expires_at,
