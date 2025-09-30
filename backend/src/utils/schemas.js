@@ -46,7 +46,8 @@ export const generateTestSchema = z.object({
 export const startAttemptSchema = z.object({
     body: z.object({
         code: z.string().min(4),
-        participantName: z.string().min(1).max(80)
+        participantName: z.string().min(1).max(80),
+        displayName: z.string().min(1).max(80).optional()
     }),
     query: z.object({}).passthrough(),
     params: z.object({}).passthrough()
@@ -56,6 +57,14 @@ export const submitAttemptSchema = z.object({
     body: z.object({
         attemptId: z.string().uuid(),
         answers: z.array(z.object({ questionId: z.string(), answer: z.string().nullable() })).min(1)
+    }),
+    query: z.object({}).passthrough(),
+    params: z.object({}).passthrough()
+});
+
+export const updateMeSchema = z.object({
+    body: z.object({
+        displayName: z.string().min(1).max(50)
     }),
     query: z.object({}).passthrough(),
     params: z.object({}).passthrough()

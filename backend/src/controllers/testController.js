@@ -31,11 +31,11 @@ export async function getTestByCode(req, res, next) {
 
 export async function startAttempt(req, res, next) {
   try {
-    const { code, participantName } = req.body;
+    const { code, participantName, displayName } = req.body;
     const test = await testRepo.findByCode(code.toUpperCase());
     if (!test) return res.status(404).json({ error: 'Test not found' });
     if (new Date(test.expires_at) < new Date()) return res.status(410).json({ error: 'Test expired' });
-    const attempt = await attemptRepo.create({ id: uuid(), test_id: test.id, user_id: req.user?.id || null, participant_name: participantName });
+    const attempt = await attemptRepo.create({ id: uuid(), test_id: test.id, user_id: req.user?.id || null, participant_name: participantName, display_name: displayName || null });
     res.status(201).json({ attemptId: attempt.id, code: test.code, startedAt: attempt.started_at });
   } catch (e) { next(e); }
 }
