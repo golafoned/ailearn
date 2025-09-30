@@ -13,7 +13,7 @@ const attemptAnswersRepo = new AttemptAnswersRepository();
 export async function generateTest(req, res, next) {
   try {
     const { title, questionCount, difficulty, timeLimitSeconds, expiresInMinutes, extraInstructions, sourceText, filename, params } = req.body;
-    const test = await genService.generateFromText({ sourceText, filename, title, questionCount, difficulty, timeLimitSeconds, expiresInMinutes, extraInstructions, params });
+    const test = await genService.generateFromText({ sourceText, filename, title, questionCount, difficulty, timeLimitSeconds, expiresInMinutes, extraInstructions, params, createdBy: req.user.id });
     res.status(201).json({ id: test.id, code: test.code, expiresAt: test.expires_at, timeLimitSeconds: test.time_limit_seconds });
   } catch (e) { next(e); }
 }

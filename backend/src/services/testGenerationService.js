@@ -13,7 +13,7 @@ function scoreAnswers(test, answers) {
 }
 
 export class TestGenerationService {
-  async generateFromText({ sourceText, filename, title, questionCount, difficulty, timeLimitSeconds, expiresInMinutes, extraInstructions, params }) {
+  async generateFromText({ sourceText, filename, title, questionCount, difficulty, timeLimitSeconds, expiresInMinutes, extraInstructions, params, createdBy }) {
     const expires_at = new Date(Date.now() + expiresInMinutes * 60000).toISOString();
     const code = generateCode();
     const model = process.env.OPENROUTER_MODEL || 'openai/gpt-4o-mini';
@@ -38,7 +38,8 @@ export class TestGenerationService {
       params_json: generationParams,
       questions_json: questions,
       expires_at,
-      time_limit_seconds: timeLimitSeconds
+      time_limit_seconds: timeLimitSeconds,
+      created_by: createdBy || null
     });
     return test;
   }
