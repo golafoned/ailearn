@@ -14,9 +14,9 @@ router.get('/code/:code', getTestByCode);
 router.post('/start', validate(startAttemptSchema), startAttempt);
 // Submit answers
 router.post('/submit', validate(submitAttemptSchema), submitAttempt);
+// User view own attempts (must come before param route)
+router.get('/me/attempts', requireAuth, listMyAttempts);
 // Owner view attempts for a test
 router.get('/:testId/attempts', requireAuth, listTestAttempts);
-// User view own attempts
-router.get('/me/attempts', requireAuth, listMyAttempts);
 
 export default router;
