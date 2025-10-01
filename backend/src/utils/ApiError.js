@@ -33,6 +33,19 @@ export class ApiError extends Error {
     ) {
         return new ApiError(500, code, message, details);
     }
+    // Convenience wrappers for new feature domain
+    static generationIncomplete(message = "Generation incomplete", code = "GENERATION_INCOMPLETE") {
+        return new ApiError(500, code, message);
+    }
+    static reviewInvalidContext(message = "Invalid review context", code = "REVIEW_INVALID_CONTEXT") {
+        return new ApiError(400, code, message);
+    }
+    static reviewStrategyUnsupported(message = "Unsupported review strategy", code = "REVIEW_STRATEGY_UNSUPPORTED") {
+        return new ApiError(400, code, message);
+    }
+    static reviewGenerationFailed(message = "Review generation failed", code = "REVIEW_GENERATION_FAILED") {
+        return new ApiError(500, code, message);
+    }
 }
 
 export function mapUnknownError(err) {

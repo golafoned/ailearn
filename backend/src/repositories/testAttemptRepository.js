@@ -71,6 +71,23 @@ export class TestAttemptRepository {
             return o;
         });
     }
+    async listByTestAndUser(testId, userId) {
+        const db = await getDb();
+        const res = db.exec(`SELECT * FROM test_attempts WHERE test_id='${testId}' AND user_id='${userId}' AND submitted_at IS NOT NULL ORDER BY submitted_at DESC LIMIT 50;`);
+        if (!res.length) return [];
+        const cols = res[0].columns;
+        return res[0].values.map(v=>{ const o={}; cols.forEach((c,i)=>o[c]=v[i]); return o; });
+    }
+    async listWrongAnswersForUser({ userId, limit = 100 }) {
+        const db = await getDb();
+        const res = db.exec(`SELECT taa.* FROM test_attempt_answers taa 
+            INNER JOIN test_attempts ta ON ta.id=taa.attempt_id 
+            WHERE ta.user_id='${userId}' AND taa.is_correct=0 
+            ORDER BY ta.submitted_at DESC LIMIT ${limit};`);
+        if (!res.length) return [];
+        const cols = res[0].columns;
+        return res[0].values.map(v=>{ const o={}; cols.forEach((c,i)=>o[c]=v[i]); return o; });
+    }
 }
 
 export class AttemptAnswersRepository {

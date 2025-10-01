@@ -73,6 +73,25 @@ export const submitAttemptSchema = z.object({
     params: z.object({}).passthrough(),
 });
 
+export const reviewGenerateSchema = z.object({
+    body: z.object({
+        strategy: z
+            .enum(["wrong_recent", "spaced_repetition", "mix"])
+            .default("wrong_recent"),
+        baseTestId: z.string().uuid().optional(),
+        attemptId: z.string().uuid().optional(),
+        questionCount: z.number().int().min(1).max(40).default(8),
+        variantMode: z
+            .enum(["variant", "exact", "adaptive"])
+            .default("variant"),
+    }).refine((data)=> data.attemptId || data.baseTestId, {
+        message: "Either attemptId or baseTestId required",
+        path: ["attemptId"]
+    }),
+    query: z.object({}).passthrough(),
+    params: z.object({}).passthrough(),
+});
+
 export const updateMeSchema = z.object({
     body: z.object({
         displayName: z.string().min(1).max(50),

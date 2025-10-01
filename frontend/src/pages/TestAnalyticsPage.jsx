@@ -174,47 +174,49 @@ export function TestAnalyticsPage() {
                                             ? "🥉"
                                             : null;
                                     return (
-                                <tr
-                                    key={a.id}
-                                    className="hover:bg-gray-50 cursor-pointer"
-                                    onClick={() =>
-                                        navigate(
-                                            `/tests/${id}/attempts/${a.id}`
-                                        )
-                                    }
-                                >
-                                    <td className="px-6 py-3 font-semibold text-gray-900">
-                                        {medal ? (
-                                            <span className="text-lg">
-                                                {medal}
-                                            </span>
-                                        ) : (
-                                            idx + 1
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-3 font-medium text-gray-900">
-                                        {a.displayName ||
-                                            a.participantName ||
-                                            "Participant"}
-                                    </td>
-                                    <td className="px-6 py-3 text-xs text-gray-600">
-                                        {a.startedAt
-                                            ? new Date(
-                                                  a.startedAt
-                                              ).toLocaleString()
-                                            : "—"}
-                                    </td>
-                                    <td className="px-6 py-3 text-xs text-gray-600">
-                                        {a.submittedAt
-                                            ? new Date(
-                                                  a.submittedAt
-                                              ).toLocaleString()
-                                            : "—"}
-                                    </td>
-                                    <td className="px-6 py-3 font-semibold text-right">
-                                        {a.score == null ? "—" : `${a.score}%`}
-                                    </td>
-                                </tr>
+                                        <tr
+                                            key={a.id}
+                                            className="hover:bg-gray-50 cursor-pointer"
+                                            onClick={() =>
+                                                navigate(
+                                                    `/tests/${id}/attempts/${a.id}`
+                                                )
+                                            }
+                                        >
+                                            <td className="px-6 py-3 font-semibold text-gray-900">
+                                                {medal ? (
+                                                    <span className="text-lg">
+                                                        {medal}
+                                                    </span>
+                                                ) : (
+                                                    idx + 1
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-3 font-medium text-gray-900">
+                                                {a.displayName ||
+                                                    a.participantName ||
+                                                    "Participant"}
+                                            </td>
+                                            <td className="px-6 py-3 text-xs text-gray-600">
+                                                {a.startedAt
+                                                    ? new Date(
+                                                          a.startedAt
+                                                      ).toLocaleString()
+                                                    : "—"}
+                                            </td>
+                                            <td className="px-6 py-3 text-xs text-gray-600">
+                                                {a.submittedAt
+                                                    ? new Date(
+                                                          a.submittedAt
+                                                      ).toLocaleString()
+                                                    : "—"}
+                                            </td>
+                                            <td className="px-6 py-3 font-semibold text-right">
+                                                {a.score == null
+                                                    ? "—"
+                                                    : `${a.score}%`}
+                                            </td>
+                                        </tr>
                                     );
                                 })}
                     </tbody>

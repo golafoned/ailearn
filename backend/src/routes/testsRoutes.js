@@ -18,7 +18,11 @@ import {
     getOwnerAttemptDetail,
     getLeaderboard,
     closeTest,
+    generateReviewTest,
+    listMyReviewTests,
+    getReviewRecommendations
 } from "../controllers/testController.js";
+import { reviewGenerateSchema } from "../utils/schemas.js";
 
 const router = Router();
 
@@ -49,5 +53,10 @@ router.get("/:testId/attempts/:attemptId", requireAuth, getOwnerAttemptDetail);
 router.get("/:testId/leaderboard", getLeaderboard);
 // Close test early
 router.post("/:testId/close", requireAuth, closeTest);
+
+// Review / practice endpoints
+router.post("/review", requireAuth, validate(reviewGenerateSchema), generateReviewTest);
+router.get("/review/mine", requireAuth, listMyReviewTests);
+router.get("/review/recommendations", requireAuth, getReviewRecommendations);
 
 export default router;

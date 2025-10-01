@@ -31,3 +31,5 @@ export async function createApp() {
     app.on("close", () => logger.info("App closing"));
     return app;
 }
+
+export default createApp;

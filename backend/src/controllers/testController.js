@@ -7,6 +7,7 @@ import { computeScore } from "../services/testGenerationService.js";
 import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
 import { ApiError } from "../utils/ApiError.js";
+import { extractTopicsFromWrongAnswers, synthesizeRecommendationBlocks } from "../utils/topicExtraction.js";
 
 const genService = new TestGenerationService();
 const testRepo = new TestRepository();
@@ -78,6 +79,10 @@ export async function startAttempt(req, res, next) {
         const { code, participantName, displayName } = req.body;
         const test = await testRepo.findByCode(code.toUpperCase());
         if (!test) throw ApiError.notFound("Test not found", "TEST_NOT_FOUND");
+        // If review test ensure only owner can start
+        if (test.is_review && test.created_by && test.created_by !== req.user?.id) {
+            throw ApiError.forbidden("Forbidden", "FORBIDDEN_REVIEW_START");
+        }
         if (new Date(test.expires_at) < new Date())
             throw ApiError.gone("Test expired", "TEST_EXPIRED");
         // Defensive: if auth header present but optionalAuth did not populate user (edge timing), decode here
@@ -296,13 +301,26 @@ export async function getAttemptDetail(req, res, next) {
         const answers = await attemptAnswersRepo.listForAttempt(attemptId);
         // Hide correct answers if viewer is only the participant and not owner
         const hideCorrect = !isOwner;
-        const detailed = answers.map((a) => ({
-            questionId: a.question_id,
-            question: a.question_text,
-            userAnswer: a.user_answer || null,
-            correct: a.is_correct === 1 ? true : false,
-            correctAnswer: hideCorrect ? undefined : a.correct_answer || null,
-        }));
+        // Need original questions for explanations
+        const questions = JSON.parse(test.questions_json);
+        const detailed = answers.map((a) => {
+            const q = questions.find(q=>q.id===a.question_id) || {};
+            const correct = a.is_correct === 1;
+            let hint = undefined;
+            if (!correct) {
+                // Derive hint from explanation without leaking answer
+                const exp = (q.explanation || "").replace(new RegExp(`${(q.answer||'').toString().replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}`, 'ig'), '');
+                hint = exp ? exp.slice(0,140).trim() : undefined;
+            }
+            return {
+                questionId: a.question_id,
+                question: a.question_text,
+                userAnswer: a.user_answer || null,
+                correct,
+                correctAnswer: hideCorrect ? undefined : (a.correct_answer || null),
+                hint: hint
+            };
+        });
         res.json({
             attemptId: attempt.id,
             testId: attempt.test_id,
@@ -335,13 +353,19 @@ export async function getOwnerAttemptDetail(req, res, next) {
                 "Attempt not submitted"
             );
         const answers = await attemptAnswersRepo.listForAttempt(attemptId);
-        const detailed = answers.map((a) => ({
-            questionId: a.question_id,
-            question: a.question_text,
-            userAnswer: a.user_answer || null,
-            correctAnswer: a.correct_answer || null,
-            isCorrect: a.is_correct === 1,
-        }));
+        const questions = JSON.parse(test.questions_json);
+        const detailed = answers.map((a) => {
+            const q = questions.find(q=>q.id===a.question_id) || {};
+            return {
+                questionId: a.question_id,
+                question: a.question_text,
+                userAnswer: a.user_answer || null,
+                correctAnswer: a.correct_answer || null,
+                isCorrect: a.is_correct === 1,
+                explanation: q.explanation || null,
+                reference: q.reference || null
+            };
+        });
         res.json({
             attemptId: attempt.id,
             testId: attempt.test_id,
@@ -400,4 +424,89 @@ export async function closeTest(req, res, next) {
     } catch (e) {
         next(e);
     }
+}
+
+// --- Review Test Endpoints ---
+export async function generateReviewTest(req, res, next) {
+    try {
+        const { strategy, baseTestId, attemptId, questionCount, variantMode } = req.body;
+        // Validate strategy
+        if (!['wrong_recent','spaced_repetition','mix'].includes(strategy)) {
+            throw ApiError.reviewStrategyUnsupported();
+        }
+        // Collect wrong answers context
+        let sourceAttempts = [];
+        let wrongAnswerRows = [];
+        if (attemptId) {
+            const att = await attemptRepo.findById(attemptId);
+            if (!att || att.user_id !== req.user.id) throw ApiError.reviewInvalidContext();
+            if (!att.submitted_at) throw ApiError.reviewInvalidContext("Attempt not submitted");
+            // join answers
+            const ansRepo = attemptAnswersRepo; // reuse
+            wrongAnswerRows = (await ansRepo.listForAttempt(att.id)).filter(a=>a.is_correct===0);
+            sourceAttempts.push(att.id);
+        }
+        if (baseTestId) {
+            const baseTest = await testRepo.findById(baseTestId);
+            if (!baseTest || baseTest.created_by !== req.user.id) throw ApiError.reviewInvalidContext("Base test not owned");
+            const prior = await attemptRepo.listByTestAndUser(baseTestId, req.user.id);
+            for (const p of prior) {
+                sourceAttempts.push(p.id);
+                const ans = await attemptAnswersRepo.listForAttempt(p.id);
+                wrongAnswerRows.push(...ans.filter(a=>a.is_correct===0));
+            }
+        }
+        if (!wrongAnswerRows.length) throw ApiError.reviewInvalidContext("No wrong answers to base review on");
+        // Derive synthetic source text: combine distinct question_text
+        const distinctQuestions = Array.from(new Set(wrongAnswerRows.map(a=>a.question_text))).slice(0, 100);
+        const pseudoSource = distinctQuestions.join("\n").slice(0, 15000);
+        const title = `Review Practice (${strategy})`;
+        const test = await genService.generateFromText({
+            sourceText: pseudoSource,
+            filename: null,
+            title,
+            questionCount,
+            difficulty: 'medium',
+            timeLimitSeconds: 60 * Math.max(3, Math.round(questionCount*1.2)),
+            expiresInMinutes: 60*24*7,
+            extraInstructions: `Focus on reinforcing concepts the learner previously answered incorrectly. Strategy=${strategy}; VariantMode=${variantMode}`,
+            params: { strategy, variantMode },
+            createdBy: req.user.id
+        });
+        // Mark as review (update row if not already flagged by repository). Simpler: direct update.
+        const dbMod = await import("../db/index.js");
+        const dbInstance = await dbMod.getDb();
+        const attemptsJson = JSON.stringify(sourceAttempts).replace(/'/g,"''");
+        dbInstance.exec(`UPDATE tests SET is_review=1, review_source_test_id=${baseTestId ? `'${baseTestId}'` : 'NULL'}, review_origin_attempt_ids='${attemptsJson}', review_strategy='${strategy}' WHERE id='${test.id}';`);
+        const updated = await testRepo.findById(test.id);
+        res.status(201).json({
+            id: updated.id,
+            code: updated.code,
+            isReview: true,
+            strategy,
+            questionCount,
+            sourceAttempts,
+            reviewSourceTestId: baseTestId || null
+        });
+    } catch (e) { next(e); }
+}
+
+export async function listMyReviewTests(req, res, next) {
+    try {
+        const tests = await testRepo.listReviewByUser(req.user.id);
+        res.json({
+            items: tests.map(t=>({ id: t.id, code: t.code, title: t.title, createdAt: t.created_at, strategy: t.review_strategy, reviewSourceTestId: t.review_source_test_id }))
+        });
+    } catch (e) { next(e); }
+}
+
+export async function getReviewRecommendations(req, res, next) {
+    try {
+        // Pull recent wrong answers
+        const wrong = await attemptRepo.listWrongAnswersForUser({ userId: req.user.id, limit: 200 });
+        if (!wrong.length) return res.json({ recommendations: [] });
+        const topics = extractTopicsFromWrongAnswers(wrong, { maxTopics: 8 });
+        const blocks = synthesizeRecommendationBlocks(topics);
+        res.json({ recommendations: blocks });
+    } catch (e) { next(e); }
 }
