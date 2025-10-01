@@ -135,32 +135,24 @@ export function TestTakingPage() {
                             Question {currentQuestionIndex + 1} of{" "}
                             {activeTest.questions.length}
                         </p>
-                        <div className="flex gap-3 mt-2 text-xs text-gray-500">
-                            {activeTest.difficulty && (
-                                <span className="uppercase tracking-wide">
-                                    {activeTest.difficulty}
-                                </span>
-                            )}
-                            {activeTest.code && (
-                                <button
-                                    onClick={copyLink}
-                                    className="underline"
-                                >
-                                    Copy share link
-                                </button>
-                            )}
-                        </div>
+                        {activeTest.difficulty && (
+                            <div className="mt-2 text-xs text-gray-500 uppercase tracking-wide">
+                                {activeTest.difficulty}
+                            </div>
+                        )}
                         {activeTest.code && (
                             <div className="mt-4 flex gap-2">
                                 <Button variant="secondary" onClick={copyLink}>
                                     Copy Link
                                 </Button>
-                                <Button
-                                    variant="secondary"
-                                    onClick={() => navigate("/create")}
-                                >
-                                    Create Another
-                                </Button>
+                                {!attempt && (
+                                    <Button
+                                        variant="secondary"
+                                        onClick={() => navigate("/create")}
+                                    >
+                                        Create Another
+                                    </Button>
+                                )}
                             </div>
                         )}
                     </div>

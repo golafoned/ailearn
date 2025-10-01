@@ -53,7 +53,7 @@ export async function getTestByCode(req, res, next) {
     try {
         const code = req.params.code.toUpperCase();
         const test = await testRepo.findByCode(code);
-    if (!test) throw ApiError.notFound("Test not found", "TEST_NOT_FOUND");
+        if (!test) throw ApiError.notFound("Test not found", "TEST_NOT_FOUND");
         // Only expose metadata & question shells (no answers)
         const questions = JSON.parse(test.questions_json).map((q) => ({
             id: q.id,
@@ -81,7 +81,7 @@ export async function startAttempt(req, res, next) {
         if (new Date(test.expires_at) < new Date())
             throw ApiError.gone("Test expired", "TEST_EXPIRED");
         // Defensive: if auth header present but optionalAuth did not populate user (edge timing), decode here
-        if (!req.user && req.headers.authorization?.startsWith('Bearer ')) {
+        if (!req.user && req.headers.authorization?.startsWith("Bearer ")) {
             const tok = req.headers.authorization.slice(7);
             try {
                 const payload = jwt.verify(tok, env.jwt.accessSecret);
@@ -96,8 +96,10 @@ export async function startAttempt(req, res, next) {
         let finalDisplayName = displayName || null;
         if (req.user) {
             // Authenticated: enforce participant name = stored display name (or email prefix)
-            finalParticipantName = req.user.display_name || req.user.email.split('@')[0];
-            if (!finalDisplayName) finalDisplayName = req.user.display_name || null;
+            finalParticipantName =
+                req.user.display_name || req.user.email.split("@")[0];
+            if (!finalDisplayName)
+                finalDisplayName = req.user.display_name || null;
         }
         const attempt = await attemptRepo.create({
             id: uuid(),
@@ -112,9 +114,13 @@ export async function startAttempt(req, res, next) {
             const dbMod = await import("../db/index.js");
             const dbInstance = await dbMod.getDb();
             const safeName = finalParticipantName.replace(/'/g, "''");
-            dbInstance.exec(`UPDATE test_attempts SET participant_name='${safeName}' WHERE id='${attempt.id}';`);
+            dbInstance.exec(
+                `UPDATE test_attempts SET participant_name='${safeName}' WHERE id='${attempt.id}';`
+            );
             if (!attempt.user_id) {
-                dbInstance.exec(`UPDATE test_attempts SET user_id='${req.user.id}' WHERE id='${attempt.id}';`);
+                dbInstance.exec(
+                    `UPDATE test_attempts SET user_id='${req.user.id}' WHERE id='${attempt.id}';`
+                );
             }
         }
         res.status(201).json({
@@ -144,7 +150,10 @@ export async function submitAttempt(req, res, next) {
                 const token = authHeader.slice(7);
                 const decoded = jwt.verify(token, env.jwt.accessSecret);
                 if (decoded.sub !== attempt.user_id)
-                    throw ApiError.forbidden("Forbidden", "FORBIDDEN_ATTEMPT_SUBMIT");
+                    throw ApiError.forbidden(
+                        "Forbidden",
+                        "FORBIDDEN_ATTEMPT_SUBMIT"
+                    );
             } catch (e) {
                 throw ApiError.unauthorized("Invalid token", "INVALID_TOKEN");
             }
@@ -198,7 +207,10 @@ export async function listTestAttempts(req, res, next) {
         const test = await testRepo.findById(testId);
         if (!test) throw ApiError.notFound("Test not found", "TEST_NOT_FOUND");
         if (test.created_by && test.created_by !== req.user?.id)
-            throw ApiError.forbidden("Forbidden", "FORBIDDEN_TEST_ATTEMPTS_LIST");
+            throw ApiError.forbidden(
+                "Forbidden",
+                "FORBIDDEN_TEST_ATTEMPTS_LIST"
+            );
         const attempts = await attemptRepo.listByTest(testId);
         res.json({
             attempts: attempts.map((a) => ({
@@ -230,8 +242,25 @@ export async function listMyTests(req, res, next) {
         const { page = 1, pageSize = 20 } = req.query;
         const p = Math.max(1, parseInt(page));
         const ps = Math.min(100, Math.max(1, parseInt(pageSize)));
-        const { items, total } = await testRepo.listByOwnerPaged(req.user.id, { page: p, pageSize: ps });
-        const summaries = items.map(t => ({ id: t.id, code: t.code, title: t.title, createdAt: t.created_at, expiresAt: t.expires_at }));
-        res.json({ items: summaries, page: p, pageSize: ps, total, totalPages: Math.ceil(total/ps) });
-    } catch (e) { next(e); }
+        const { items, total } = await testRepo.listByOwnerPaged(req.user.id, {
+            page: p,
+            pageSize: ps,
+        });
+        const summaries = items.map((t) => ({
+            id: t.id,
+            code: t.code,
+            title: t.title,
+            createdAt: t.created_at,
+            expiresAt: t.expires_at,
+        }));
+        res.json({
+            items: summaries,
+            page: p,
+            pageSize: ps,
+            total,
+            totalPages: Math.ceil(total / ps),
+        });
+    } catch (e) {
+        next(e);
+    }
 }

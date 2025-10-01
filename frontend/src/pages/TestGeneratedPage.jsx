@@ -6,8 +6,9 @@ import { useNavigate } from "react-router-dom";
 import { useTestData } from "../contexts/TestDataContext";
 
 export function TestGeneratedPage() {
-    const { previewTest, lastGeneratedCode } = useTestData();
-    const code = previewTest?.code || lastGeneratedCode || "unknown";
+    const { previewTest, lastGeneratedCode, attempt } = useTestData();
+    const code =
+        previewTest?.code || attempt?.code || lastGeneratedCode || "unknown";
     const testLink = useMemo(
         () => `${window.location.origin}/code/${code}`,
         [code]
@@ -25,14 +26,33 @@ export function TestGeneratedPage() {
         setCopiedCode(ok);
         if (ok) setTimeout(() => setCopiedCode(false), 2000);
     };
+    const isAttemptResult = attempt && attempt.submittedAt; // user finished a real attempt
+    let heading = "Your Test is Ready!";
+    if (isAttemptResult) heading = "Test Completed";
     return (
         <div className="max-w-2xl mx-auto px-4 py-24 sm:py-32 text-center">
             <h1 className="text-3xl sm:text-4xl font-bold mb-4 text-gray-900">
-                Your Test is Ready!
+                {heading}
             </h1>
-            <p className="text-gray-500 mb-8">
-                Share the link below with your participants.
-            </p>
+            {!isAttemptResult && (
+                <p className="text-gray-500 mb-8">
+                    Share the link below with your participants.
+                </p>
+            )}
+            {isAttemptResult && (
+                <div className="mb-8">
+                    <p className="text-lg text-gray-700 mb-2">Your Score:</p>
+                    <div className="text-5xl font-extrabold tracking-tight">
+                        {attempt.score == null ? "—" : `${attempt.score}%`}
+                    </div>
+                    {attempt.totalQuestions != null && (
+                        <p className="mt-2 text-sm text-gray-500">
+                            {attempt.answered ?? "-"} answered /{" "}
+                            {attempt.totalQuestions} questions
+                        </p>
+                    )}
+                </div>
+            )}
             <div className="bg-white rounded-xl p-8 border border-gray-200 shadow-sm">
                 <label
                     htmlFor="test-link"
@@ -83,7 +103,7 @@ export function TestGeneratedPage() {
                 variant="secondary"
                 className="mt-8"
             >
-                Back to Dashboard
+                {isAttemptResult ? "Return to Dashboard" : "Back to Dashboard"}
             </Button>
         </div>
     );

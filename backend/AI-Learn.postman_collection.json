@@ -261,7 +261,10 @@
                     "request": {
                         "method": "GET",
                         "header": [
-                            { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            }
                         ],
                         "url": {
                             "raw": "{{baseUrl}}/api/v1/tests/mine?page=1&pageSize=10",
@@ -361,8 +364,7 @@
                     }
                 }
             ]
-        }
-        ,
+        },
         {
             "name": "Users",
             "item": [

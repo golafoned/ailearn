@@ -183,6 +183,6 @@ describe("Additional flow tests", () => {
             .set("Authorization", `Bearer ${token}`)
             .send({ displayName: "Changed" });
         expect(patchRes.statusCode).toBe(200);
-    expect(patchRes.body.user.displayName).toBe("Changed");
+        expect(patchRes.body.user.displayName).toBe("Changed");
     });
 });

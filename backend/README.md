@@ -99,31 +99,33 @@ All errors are returned with a consistent JSON envelope:
 ```
 
 ### Conventions
-- `code` is stable (UPPER_SNAKE_CASE) and suitable for client branching / i18n.
-- `message` is concise and human-readable (not for parsing).
-- `details` appears mainly for validation errors (Zod issues) or when extra structured info is useful.
-- Unknown / unhandled exceptions are mapped to `INTERNAL_SERVER_ERROR` (500) without leaking internal stack traces.
+
+-   `code` is stable (UPPER_SNAKE_CASE) and suitable for client branching / i18n.
+-   `message` is concise and human-readable (not for parsing).
+-   `details` appears mainly for validation errors (Zod issues) or when extra structured info is useful.
+-   Unknown / unhandled exceptions are mapped to `INTERNAL_SERVER_ERROR` (500) without leaking internal stack traces.
 
 ### Common HTTP Status -> Code Mapping
 
-| HTTP | Code                              | Typical Scenario |
-| ---- | --------------------------------- | ---------------- |
-| 400  | VALIDATION_ERROR / BAD_REQUEST    | Zod validation failed / malformed input
-| 400  | ALREADY_SUBMITTED                 | Attempt already submitted
-| 401  | UNAUTHORIZED / INVALID_CREDENTIALS| Auth required or bad login
-| 401  | INVALID_REFRESH_TOKEN / EXPIRED_REFRESH_TOKEN | Refresh token invalid/expired
-| 401  | INVALID_TOKEN / AUTH_REQUIRED     | Access token missing or invalid for protected action
-| 403  | FORBIDDEN_ATTEMPT_SUBMIT          | User not owner of attempt
-| 403  | FORBIDDEN_TEST_ATTEMPTS_LIST      | Non-owner listing test attempts
-| 404  | TEST_NOT_FOUND / ATTEMPT_NOT_FOUND| Resource lookup failed
-| 409  | EMAIL_TAKEN / CONFLICT            | Unique constraint conflict (e.g. register)
-| 410  | TEST_EXPIRED                      | Test expired before action
-| 429  | RATE_LIMITED                      | Rate limiter triggered
-| 500  | INTERNAL_SERVER_ERROR             | Unhandled server error
+| HTTP | Code                                          | Typical Scenario                                     |
+| ---- | --------------------------------------------- | ---------------------------------------------------- |
+| 400  | VALIDATION_ERROR / BAD_REQUEST                | Zod validation failed / malformed input              |
+| 400  | ALREADY_SUBMITTED                             | Attempt already submitted                            |
+| 401  | UNAUTHORIZED / INVALID_CREDENTIALS            | Auth required or bad login                           |
+| 401  | INVALID_REFRESH_TOKEN / EXPIRED_REFRESH_TOKEN | Refresh token invalid/expired                        |
+| 401  | INVALID_TOKEN / AUTH_REQUIRED                 | Access token missing or invalid for protected action |
+| 403  | FORBIDDEN_ATTEMPT_SUBMIT                      | User not owner of attempt                            |
+| 403  | FORBIDDEN_TEST_ATTEMPTS_LIST                  | Non-owner listing test attempts                      |
+| 404  | TEST_NOT_FOUND / ATTEMPT_NOT_FOUND            | Resource lookup failed                               |
+| 409  | EMAIL_TAKEN / CONFLICT                        | Unique constraint conflict (e.g. register)           |
+| 410  | TEST_EXPIRED                                  | Test expired before action                           |
+| 429  | RATE_LIMITED                                  | Rate limiter triggered                               |
+| 500  | INTERNAL_SERVER_ERROR                         | Unhandled server error                               |
 
 ### Validation Error Shape
 
 For input validation failures (Zod), status 400 and:
+
 ```
 {
   "error": {
@@ -138,6 +140,7 @@ For input validation failures (Zod), status 400 and:
 ```
 
 ### Example: Expired Test
+
 ```
 HTTP/1.1 410 Gone
 {
@@ -149,6 +152,7 @@ HTTP/1.1 410 Gone
 ```
 
 ### Example: Duplicate Submission
+
 ```
 HTTP/1.1 400 Bad Request
 {
@@ -160,15 +164,17 @@ HTTP/1.1 400 Bad Request
 ```
 
 ### Client Handling Tips
-- Branch on `error.code` rather than status for granular UX.
-- For validation, map each `details[i].path` array to form fields.
-- Implement a generic toast/banner for unknown `INTERNAL_SERVER_ERROR`.
-- Consider telemetry/logging of unexpected codes on the frontend.
+
+-   Branch on `error.code` rather than status for granular UX.
+-   For validation, map each `details[i].path` array to form fields.
+-   Implement a generic toast/banner for unknown `INTERNAL_SERVER_ERROR`.
+-   Consider telemetry/logging of unexpected codes on the frontend.
 
 ### Future Error Enhancements
-- Correlation / request ID in error envelope
-- Localization of messages (clients decide language based on `code`)
-- Machine actionable `meta` object for rate limit resets, retry hints, etc.
+
+-   Correlation / request ID in error envelope
+-   Localization of messages (clients decide language based on `code`)
+-   Machine actionable `meta` object for rate limit resets, retry hints, etc.
 
 ## Notes
 

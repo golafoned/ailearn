@@ -56,12 +56,20 @@ export class TestRepository {
     async listByOwnerPaged(userId, { page, pageSize }) {
         const db = await getDb();
         const offset = (page - 1) * pageSize;
-        const res = db.exec(`SELECT * FROM tests WHERE created_by='${userId}' ORDER BY created_at DESC LIMIT ${pageSize} OFFSET ${offset};`);
-        const countRes = db.exec(`SELECT COUNT(*) as c FROM tests WHERE created_by='${userId}';`);
+        const res = db.exec(
+            `SELECT * FROM tests WHERE created_by='${userId}' ORDER BY created_at DESC LIMIT ${pageSize} OFFSET ${offset};`
+        );
+        const countRes = db.exec(
+            `SELECT COUNT(*) as c FROM tests WHERE created_by='${userId}';`
+        );
         const total = countRes.length ? countRes[0].values[0][0] : 0;
         if (!res.length) return { items: [], total };
         const cols = res[0].columns;
-        const items = res[0].values.map(v=>{ const o={}; cols.forEach((c,i)=>o[c]=v[i]); return o; });
+        const items = res[0].values.map((v) => {
+            const o = {};
+            cols.forEach((c, i) => (o[c] = v[i]));
+            return o;
+        });
         return { items, total };
     }
 }

@@ -56,14 +56,7 @@ export default function App() {
                     />
                     {/* Active attempt route (after starting) */}
                     <Route path="/attempt" element={<TestTakingPage />} />
-                    <Route
-                        path="/generated"
-                        element={
-                            <PrivateRoute>
-                                <TestGeneratedPage />
-                            </PrivateRoute>
-                        }
-                    />
+                    <Route path="/generated" element={<TestGeneratedPage />} />
                     <Route
                         path="/profile"
                         element={

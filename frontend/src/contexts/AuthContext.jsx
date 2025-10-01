@@ -86,11 +86,17 @@ export function AuthProvider({ children }) {
         try {
             const data = await apiFetch("/api/v1/auth/me");
             setUser(data.user);
+            // persist updated user into token store (keep existing tokens)
+            tokenStore.setTokens(
+                tokenStore.getAccessToken(),
+                tokenStore.getRefreshToken(),
+                data.user
+            );
             return data.user;
         } catch {
             return null;
         }
-    }, []);
+    }, [tokenStore]);
 
     // Initial hydration (run once)
     useEffect(() => {

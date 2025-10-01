@@ -42,10 +42,16 @@ export class AuthService {
     async login({ email, password }) {
         const user = await userRepo.findByEmail(email.toLowerCase());
         if (!user)
-            throw ApiError.unauthorized("Invalid credentials", "INVALID_CREDENTIALS");
+            throw ApiError.unauthorized(
+                "Invalid credentials",
+                "INVALID_CREDENTIALS"
+            );
         const ok = await bcrypt.compare(password, user.password_hash);
         if (!ok)
-            throw ApiError.unauthorized("Invalid credentials", "INVALID_CREDENTIALS");
+            throw ApiError.unauthorized(
+                "Invalid credentials",
+                "INVALID_CREDENTIALS"
+            );
         return this._issueTokens(user);
     }
 
@@ -54,16 +60,25 @@ export class AuthService {
             const payload = jwt.verify(refreshToken, env.jwt.refreshSecret);
             const record = await refreshRepo.find(refreshToken);
             if (!record || record.revoked)
-                throw ApiError.unauthorized("Invalid token", "INVALID_REFRESH_TOKEN");
+                throw ApiError.unauthorized(
+                    "Invalid token",
+                    "INVALID_REFRESH_TOKEN"
+                );
             if (new Date(record.expires_at) < new Date())
-                throw ApiError.unauthorized("Expired token", "EXPIRED_REFRESH_TOKEN");
+                throw ApiError.unauthorized(
+                    "Expired token",
+                    "EXPIRED_REFRESH_TOKEN"
+                );
             await refreshRepo.revoke(refreshToken);
             const user = await userRepo.findById(payload.sub);
             if (!user)
                 throw ApiError.notFound("User not found", "USER_NOT_FOUND");
             return this._issueTokens(user);
         } catch (e) {
-            throw ApiError.unauthorized("Invalid refresh token", "INVALID_REFRESH_TOKEN");
+            throw ApiError.unauthorized(
+                "Invalid refresh token",
+                "INVALID_REFRESH_TOKEN"
+            );
         }
     }
 

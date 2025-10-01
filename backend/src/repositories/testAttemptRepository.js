@@ -13,11 +13,20 @@ function row(res) {
 export class TestAttemptRepository {
     async create(att) {
         const db = await getDb();
-        const participant = (att.participant_name || 'Participant').replace(/'/g, "''");
+        const participant = (att.participant_name || "Participant").replace(
+            /'/g,
+            "''"
+        );
         const displayName = att.display_name
             ? `'${att.display_name.replace(/'/g, "''")}'`
             : "NULL";
-        db.exec(`INSERT INTO test_attempts (id, test_id, user_id, participant_name, display_name) VALUES ('${att.id}','${att.test_id}',${att.user_id ? `'${att.user_id}'` : "NULL"},'${participant}',${displayName});`);
+        db.exec(
+            `INSERT INTO test_attempts (id, test_id, user_id, participant_name, display_name) VALUES ('${
+                att.id
+            }','${att.test_id}',${
+                att.user_id ? `'${att.user_id}'` : "NULL"
+            },'${participant}',${displayName});`
+        );
         return this.findById(att.id);
     }
     async findById(id) {

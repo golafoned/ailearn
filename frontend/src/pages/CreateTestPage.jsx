@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Button } from "../components/Button";
 import { IconUpload, IconArrowRight } from "../components/Icons";
 import { useNavigate } from "react-router-dom";
@@ -18,7 +18,8 @@ export function CreateTestPage() {
     const [instructions, setInstructions] = useState("");
     const [expiresInMinutes, setExpiresInMinutes] = useState(60);
     const navigate = useNavigate();
-    const { setPreviewTest, setLastGeneratedCode } = useTestData();
+    const { setPreviewTest, setLastGeneratedCode, addLocalGeneratedTest } =
+        useTestData();
     const abortRef = useRef(null);
 
     const handleFileChange = (e) => {
@@ -31,6 +32,48 @@ export function CreateTestPage() {
             }
         }
     };
+
+    // Load persisted params
+    useEffect(() => {
+        try {
+            const raw = localStorage.getItem("genParams");
+            if (raw) {
+                const p = JSON.parse(raw);
+                if (p.questions) setQuestions(p.questions);
+                if (p.timeLimit) setTimeLimit(p.timeLimit);
+                if (p.difficulty) setDifficulty(p.difficulty);
+                if (p.title) setTitle(p.title);
+                if (p.instructions) setInstructions(p.instructions);
+                if (p.expiresInMinutes) setExpiresInMinutes(p.expiresInMinutes);
+            }
+        } catch {
+            /* ignore */
+        }
+    }, []);
+
+    // Persist on change
+    useEffect(() => {
+        const payload = {
+            questions,
+            timeLimit,
+            difficulty,
+            title,
+            instructions,
+            expiresInMinutes,
+        };
+        try {
+            localStorage.setItem("genParams", JSON.stringify(payload));
+        } catch {
+            /* ignore */
+        }
+    }, [
+        questions,
+        timeLimit,
+        difficulty,
+        title,
+        instructions,
+        expiresInMinutes,
+    ]);
 
     const readTextFile = async (file) => {
         if (!file) return "";
@@ -101,6 +144,14 @@ export function CreateTestPage() {
             if (!genResp || !genResp.code)
                 throw new Error("Generation response missing test code.");
             setLastGeneratedCode(genResp.code);
+            // optimistic local list entry (minimal fields until poll resolves)
+            addLocalGeneratedTest({
+                id: genResp.id,
+                code: genResp.code,
+                title: payload.title,
+                createdAt: new Date().toISOString(),
+                expiresAt: genResp.expiresAt,
+            });
             // Poll endpoint for fully generated questions
             const full = await pollForQuestions(genResp.code, {});
             setPreviewTest(full);

@@ -77,7 +77,10 @@ export class TestGenerationService {
     async _callOpenRouterJSON({ model, prompt, questionCount }) {
         const apiKey = process.env.OPENROUTER_API_KEY;
         if (!apiKey)
-            throw ApiError.internal("Missing OPENROUTER_API_KEY", "MISSING_API_KEY");
+            throw ApiError.internal(
+                "Missing OPENROUTER_API_KEY",
+                "MISSING_API_KEY"
+            );
         const wantSchema = process.env.AI_SCHEMA_JSON !== "false";
         const schema = {
             type: "object",
@@ -195,7 +198,10 @@ export class TestGenerationService {
                 const content = resp.json?.choices?.[0]?.message?.content;
                 const parsed = this._robustParseJSON(content);
                 if (!Array.isArray(parsed.questions))
-                    throw ApiError.internal("Missing questions[]", "AI_MALFORMED_RESPONSE");
+                    throw ApiError.internal(
+                        "Missing questions[]",
+                        "AI_MALFORMED_RESPONSE"
+                    );
                 if (questionCount && parsed.questions.length > questionCount)
                     parsed.questions = parsed.questions.slice(0, questionCount);
                 return parsed.questions.map((q) => ({
@@ -217,7 +223,10 @@ export class TestGenerationService {
                 continue;
             }
         }
-    throw lastErr || ApiError.internal("AI generation failed", "AI_GENERATION_FAILED");
+        throw (
+            lastErr ||
+            ApiError.internal("AI generation failed", "AI_GENERATION_FAILED")
+        );
     }
 
     _robustParseJSON(raw) {
@@ -255,7 +264,10 @@ export class TestGenerationService {
                 return JSON.parse(candidate);
             } catch {}
         }
-    throw ApiError.internal("Unable to parse JSON content", "AI_PARSE_FAILURE");
+        throw ApiError.internal(
+            "Unable to parse JSON content",
+            "AI_PARSE_FAILURE"
+        );
     }
 
     _fakeQuestions(count) {

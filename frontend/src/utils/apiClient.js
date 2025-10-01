@@ -14,10 +14,11 @@ async function parseJSON(res) {
 }
 
 export class ApiError extends Error {
-    constructor(message, status, data) {
+    constructor(message, status, data, code) {
         super(message);
         this.status = status;
         this.data = data;
+        this.code = code;
     }
 }
 
@@ -45,8 +46,21 @@ export async function apiFetch(
     }
 
     const data = await parseJSON(res);
-    if (!res.ok)
-        throw new ApiError(data?.error || "Request failed", res.status, data);
+    if (!res.ok) {
+        // Standard envelope { error: { code, message, details } }
+        let message = "Request failed";
+        let code = undefined;
+        if (data && typeof data === "object") {
+            if (data.error) {
+                const err = data.error;
+                message = err.message || err.code || message;
+                code = err.code;
+            } else if (data.message) {
+                message = data.message;
+            }
+        }
+        throw new ApiError(message, res.status, data, code);
+    }
     return data;
 }
 

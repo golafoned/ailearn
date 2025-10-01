@@ -1,17 +1,64 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Button } from "../components/Button";
 import { IconClock, IconCalendar } from "../components/Icons";
 import { useTestData } from "../contexts/TestDataContext";
 import { useNavigate } from "react-router-dom";
 
 export function DashboardPage() {
-    const { myAttempts, fetchMyAttempts, loading } = useTestData();
+    const {
+        myAttempts,
+        fetchMyAttempts,
+        loading,
+        tests,
+        fetchMyTests,
+        testsPageInfo,
+    } = useTestData();
     const [activeTab, setActiveTab] = useState("myTests");
+    // inline attempts removed; use dedicated analytics page
     const navigate = useNavigate();
 
     // For now we only have attempts (no list my tests endpoint yet)
     // Could fetch on mount when switching to results tab
     const loadAttempts = () => fetchMyAttempts().catch(() => {});
+
+    useEffect(() => {
+        if (activeTab === "myTests" && tests.length === 0) {
+            fetchMyTests({ page: 1, pageSize: 10 }).catch(() => {});
+        }
+        if (activeTab === "myResults" && myAttempts.length === 0) {
+            // also fetch first page of my tests so we can map titles
+            fetchMyTests({ page: 1, pageSize: 10 }).catch(() => {});
+            fetchMyAttempts().catch(() => {});
+        }
+    }, [
+        activeTab,
+        tests.length,
+        myAttempts.length,
+        fetchMyTests,
+        fetchMyAttempts,
+    ]);
+
+    const testTitleMap = useMemo(() => {
+        const map = {};
+        tests.forEach((t) => {
+            map[t.id] = t.title;
+        });
+        return map;
+    }, [tests]);
+
+    const openTestAttempts = (t) => {
+        navigate(`/tests/${t.id}/analytics`);
+    };
+
+    const loadMoreTests = () => {
+        if (testsPageInfo.page < testsPageInfo.totalPages) {
+            fetchMyTests({
+                page: testsPageInfo.page + 1,
+                pageSize: testsPageInfo.pageSize,
+                append: true,
+            }).catch(() => {});
+        }
+    };
 
     return (
         <div className="max-w-7xl mx-auto px-4 py-24 sm:py-32">
@@ -48,17 +95,62 @@ export function DashboardPage() {
                 </nav>
             </div>
             {activeTab === "myTests" && (
-                <div className="text-center py-20 border-2 border-dashed border-gray-300 rounded-xl">
-                    <h2 className="text-2xl font-semibold mb-2 text-gray-800">
-                        No test listing endpoint yet
-                    </h2>
-                    <p className="text-gray-500 mb-6">
-                        Generate a test and share its code immediately after
-                        creation.
-                    </p>
-                    <Button onClick={() => navigate("/create")}>
-                        Generate a Test
-                    </Button>
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-semibold">My Tests</h2>
+                        <Button
+                            variant="secondary"
+                            onClick={() =>
+                                fetchMyTests({ page: 1, pageSize: 10 })
+                            }
+                            disabled={loading}
+                        >
+                            {loading ? "Loading..." : "Refresh"}
+                        </Button>
+                    </div>
+                    {tests.length === 0 && !loading && (
+                        <p className="text-sm text-gray-500">
+                            No tests yet. Generate your first one.
+                        </p>
+                    )}
+                    <ul className="divide-y divide-gray-200">
+                        {tests.map((t) => (
+                            <li
+                                key={t.id}
+                                className="py-3 text-sm flex justify-between items-center cursor-pointer hover:bg-gray-50 px-2 rounded-md transition"
+                                onClick={() => openTestAttempts(t)}
+                            >
+                                <div>
+                                    <p className="font-medium text-gray-900">
+                                        {t.title}
+                                    </p>
+                                    <p className="text-xs text-gray-500 font-mono">
+                                        {t.code}
+                                    </p>
+                                </div>
+                                <div className="text-right text-xs text-gray-500">
+                                    <p>
+                                        Expires:{" "}
+                                        {new Date(
+                                            t.expiresAt
+                                        ).toLocaleDateString()}
+                                    </p>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                    {testsPageInfo.page < testsPageInfo.totalPages && (
+                        <div className="mt-4 text-center">
+                            <Button
+                                variant="secondary"
+                                onClick={loadMoreTests}
+                                disabled={loading}
+                            >
+                                {loading ? "Loading..." : "Load More"}
+                            </Button>
+                        </div>
+                    )}
+                    {/* Attempts moved to dedicated analytics page */}
                 </div>
             )}
             {activeTab === "myResults" && (
@@ -78,21 +170,45 @@ export function DashboardPage() {
                             No attempts yet.
                         </p>
                     ) : (
-                        <ul className="divide-y divide-gray-200">
-                            {myAttempts.map((a) => (
-                                <li
-                                    key={a.id}
-                                    className="py-3 text-sm flex justify-between"
-                                >
-                                    <span className="font-mono">
-                                        {a.id.slice(0, 8)}...
-                                    </span>
-                                    <span>
-                                        {a.score == null ? "—" : `${a.score}%`}
-                                    </span>
-                                </li>
-                            ))}
-                        </ul>
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full text-sm">
+                                <thead>
+                                    <tr className="text-left text-gray-500 border-b">
+                                        <th className="py-2 pr-4">Test</th>
+                                        <th className="py-2 pr-4">Started</th>
+                                        <th className="py-2 pr-4">Score</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {myAttempts.map((a) => (
+                                        <tr
+                                            key={a.id}
+                                            className="hover:bg-gray-50"
+                                        >
+                                            <td className="py-2 pr-4">
+                                                <div className="font-medium text-gray-900 truncate max-w-[220px]">
+                                                    {testTitleMap[a.test_id] ||
+                                                        "Test"}
+                                                </div>
+                                                <div className="text-xs text-gray-500 font-mono">
+                                                    {a.id.slice(0, 8)}...
+                                                </div>
+                                            </td>
+                                            <td className="py-2 pr-4 text-xs text-gray-600">
+                                                {new Date(
+                                                    a.started_at
+                                                ).toLocaleString()}
+                                            </td>
+                                            <td className="py-2 pr-4 font-semibold">
+                                                {a.score == null
+                                                    ? "—"
+                                                    : `${a.score}%`}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     )}
                 </div>
             )}

@@ -43,8 +43,17 @@ export async function me(req, res, next) {
     try {
         if (!req.user) throw ApiError.unauthorized();
         const { id, email, display_name, created_at } = req.user;
-        res.json({ user: { id, email, displayName: display_name, createdAt: created_at } });
-    } catch (e) { next(e); }
+        res.json({
+            user: {
+                id,
+                email,
+                displayName: display_name,
+                createdAt: created_at,
+            },
+        });
+    } catch (e) {
+        next(e);
+    }
 }
 
 export async function logout(req, res, next) {
@@ -61,13 +70,23 @@ export async function updateMe(req, res, next) {
     try {
         const { displayName } = req.body;
         if (!displayName || displayName.length < 1 || displayName.length > 50)
-            throw ApiError.badRequest("INVALID_DISPLAY_NAME", "Invalid displayName");
+            throw ApiError.badRequest(
+                "INVALID_DISPLAY_NAME",
+                "Invalid displayName"
+            );
         const updated = await userRepo.updateDisplayName(
             req.user.id,
             displayName
         );
-    const { id, email, display_name, created_at } = updated;
-    res.json({ user: { id, email, displayName: display_name, createdAt: created_at } });
+        const { id, email, display_name, created_at } = updated;
+        res.json({
+            user: {
+                id,
+                email,
+                displayName: display_name,
+                createdAt: created_at,
+            },
+        });
     } catch (e) {
         next(e);
     }

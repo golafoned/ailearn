@@ -7,8 +7,13 @@ React + Vite + Tailwind frontend aligned with the backend's clean layering philo
 -   Polling-based async test build (generate -> poll by code until questions ready)
 -   Preview + timer + share link + copyable code
 -   Dynamic test metadata (title, difficulty, time, expiration, extra instructions)
+-   Paginated "My Tests" listing powered by `/api/v1/tests/mine`
+-   Owner view of per‑test attempts (click a test to reveal attempts)
+-   Personal attempts table with test titles + scores
+-   Toast notification system (success / error ephemeral messages)
+-   Persisted last-used generation parameters (localStorage) for faster iteration
 
-All test & attempt interactions now flow through backend endpoints; mock data has been removed. A listing endpoint for "my created tests" is not yet present, so the dashboard shows guidance and your personal attempts.
+All test & attempt interactions flow through backend endpoints; mock data has been removed.
 
 ## Stack
 
@@ -72,12 +77,29 @@ Test Generation & Preview Flow:
         "extraInstructions": "Emphasize definitions"
     }
     ```
-5. Response returns at least a `code` (short identifier).
+5. Response returns `id`, `code`, `expiresAt`, `timeLimitSeconds`; we optimistically insert a minimal record into local test list.
 6. Frontend polls `GET /api/v1/tests/code/{code}` every 1.5s (timeout 120s) until a payload with a non-empty `questions` array is returned.
 7. Completed test (with questions + timing metadata) is stored in `TestDataContext.previewTest` and user is navigated to the preview / taking page.
 8. Countdown timer (seconds) renders using `timeLimitSeconds` and auto-submits (navigates to generated page) at zero.
 9. Share link + raw test code are copyable from both the preview header and the generated confirmation page.
 10. Anyone with the code can visit `/code/:code`, enter a participant name, start an attempt (public), and then answer questions at `/attempt`.
+11. Owners can click a test in the dashboard to view aggregated attempts (participant name + score).
+
+Pagination (`/api/v1/tests/mine`):
+
+-   Query params: `page` (1-based), `pageSize` (default 20, capped 100)
+-   Response: `{ items, page, pageSize, total, totalPages }`
+-   UI provides Load More pattern, merging pages client-side.
+
+Error Envelope Handling:
+
+All errors normalized by backend as:
+
+```jsonc
+{ "error": { "code": "SOME_CODE", "message": "Human readable", "details": {...} } }
+```
+
+The `apiClient` converts this into `ApiError(message, status, data, code)`; UI surfaces friendly messages (mapping can be extended in a central helper if needed).
 
 Error Handling:
 
@@ -145,13 +167,13 @@ Tailwind configured with content scanning across `index.html` and all source fil
 
 ## Next Steps / Roadmap
 
--   List user's generated tests (requires backend feature).
--   Add validation (Zod) to forms (login/register/generate/start attempt/submit) for schema parity.
--   Add dedicated error & loading components (skeletons, toasts).
--   Score & answer review page after submission.
--   Analytics fetch for attempts per test owner.
--   Persist generation + resume polling after refresh.
--   Domain caching layer (TanStack Query) if API usage increases.
+-   Centralized error code → friendly message mapping (partial now)
+-   Per-question review + detailed analytics page
+-   Export attempts (CSV) + summary charts
+-   Resume in-progress generation after refresh (persist poll state)
+-   Support PDF/DOCX ingestion pipeline
+-   Introduce TanStack Query for cache & background refetching
+-   Add skeleton loaders + ARIA live regions for toasts
 
 ## License
 
