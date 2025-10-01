@@ -39,7 +39,7 @@ backend/
 See `.env.example`:
 
 -   `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` (generate secure random 32+ bytes)
--   Expiry config: `JWT_ACCESS_EXPIRES` (default 15m), `JWT_REFRESH_EXPIRES` (default 7d)
+-   Expiry config: `JWT_ACCESS_EXPIRES` (default 15m), `JWT_REFRESH_EXPIRES` (default 1d in dev, configure as needed)
 -   `OPENROUTER_API_KEY` (required for real AI generation, omit / leave blank when DRY_RUN_AI=true)
 -   `OPENROUTER_MODEL` (model id used for generation; request body no longer accepts model)
 -   `AI_SCHEMA_JSON` (set to `false` to disable json_schema forcing and use fallback prompt parsing)
@@ -83,6 +83,92 @@ Refresh token rotation: each refresh call revokes the used token & issues a new 
 ## Testing
 
 Tests create a separate SQLite file `data/test.db` to keep data isolated. Add more tests in `tests/` following the existing pattern.
+
+## Standardized Error Responses
+
+All errors are returned with a consistent JSON envelope:
+
+```
+{
+  "error": {
+    "code": "STRING_CODE",
+    "message": "Human-readable message",
+    "details": [ /* optional array for validation or contextual info */ ]
+  }
+}
+```
+
+### Conventions
+- `code` is stable (UPPER_SNAKE_CASE) and suitable for client branching / i18n.
+- `message` is concise and human-readable (not for parsing).
+- `details` appears mainly for validation errors (Zod issues) or when extra structured info is useful.
+- Unknown / unhandled exceptions are mapped to `INTERNAL_SERVER_ERROR` (500) without leaking internal stack traces.
+
+### Common HTTP Status -> Code Mapping
+
+| HTTP | Code                              | Typical Scenario |
+| ---- | --------------------------------- | ---------------- |
+| 400  | VALIDATION_ERROR / BAD_REQUEST    | Zod validation failed / malformed input
+| 400  | ALREADY_SUBMITTED                 | Attempt already submitted
+| 401  | UNAUTHORIZED / INVALID_CREDENTIALS| Auth required or bad login
+| 401  | INVALID_REFRESH_TOKEN / EXPIRED_REFRESH_TOKEN | Refresh token invalid/expired
+| 401  | INVALID_TOKEN / AUTH_REQUIRED     | Access token missing or invalid for protected action
+| 403  | FORBIDDEN_ATTEMPT_SUBMIT          | User not owner of attempt
+| 403  | FORBIDDEN_TEST_ATTEMPTS_LIST      | Non-owner listing test attempts
+| 404  | TEST_NOT_FOUND / ATTEMPT_NOT_FOUND| Resource lookup failed
+| 409  | EMAIL_TAKEN / CONFLICT            | Unique constraint conflict (e.g. register)
+| 410  | TEST_EXPIRED                      | Test expired before action
+| 429  | RATE_LIMITED                      | Rate limiter triggered
+| 500  | INTERNAL_SERVER_ERROR             | Unhandled server error
+
+### Validation Error Shape
+
+For input validation failures (Zod), status 400 and:
+```
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Validation error",
+    "details": [
+      { "path": ["body","email"], "message": "Invalid email", "code": "invalid_string" },
+      { "path": ["body","password"], "message": "String must contain at least 8 character(s)", "code": "too_small" }
+    ]
+  }
+}
+```
+
+### Example: Expired Test
+```
+HTTP/1.1 410 Gone
+{
+  "error": {
+    "code": "TEST_EXPIRED",
+    "message": "Test expired"
+  }
+}
+```
+
+### Example: Duplicate Submission
+```
+HTTP/1.1 400 Bad Request
+{
+  "error": {
+    "code": "ALREADY_SUBMITTED",
+    "message": "Already submitted"
+  }
+}
+```
+
+### Client Handling Tips
+- Branch on `error.code` rather than status for granular UX.
+- For validation, map each `details[i].path` array to form fields.
+- Implement a generic toast/banner for unknown `INTERNAL_SERVER_ERROR`.
+- Consider telemetry/logging of unexpected codes on the frontend.
+
+### Future Error Enhancements
+- Correlation / request ID in error envelope
+- Localization of messages (clients decide language based on `code`)
+- Machine actionable `meta` object for rate limit resets, retry hints, etc.
 
 ## Notes
 
