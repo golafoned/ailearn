@@ -362,6 +362,59 @@
                             "path": ["api", "v1", "tests", "submit"]
                         }
                     }
+                },
+                {
+                    "name": "Attempt Detail (Participant)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {"key": "Authorization", "value": "Bearer {{accessToken}}"}
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/tests/attempt/{{attemptId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "v1", "tests", "attempt", "{{attemptId}}"]
+                        }
+                    }
+                },
+                {
+                    "name": "Attempt Detail (Owner)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {"key": "Authorization", "value": "Bearer {{accessToken}}"}
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/tests/{{testId}}/attempts/{{attemptId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "v1", "tests", "{{testId}}", "attempts", "{{attemptId}}"]
+                        }
+                    }
+                },
+                {
+                    "name": "Leaderboard",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/tests/{{testId}}/leaderboard?limit=10",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "v1", "tests", "{{testId}}", "leaderboard"],
+                            "query": [ {"key": "limit", "value": "10"} ]
+                        }
+                    }
+                },
+                {
+                    "name": "Close Test",
+                    "request": {
+                        "method": "POST",
+                        "header": [ {"key": "Authorization", "value": "Bearer {{accessToken}}"} ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/tests/{{testId}}/close",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "v1", "tests", "{{testId}}", "close"]
+                        }
+                    }
                 }
             ]
         },
