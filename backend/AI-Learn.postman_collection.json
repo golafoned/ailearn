@@ -1,183 +1,410 @@
 {
-  "info": {
-    "name": "AI Learn API",
-    "_postman_id": "b4e4c9fa-5d6b-4a0c-9c1d-ailearn-collection",
-    "description": "Postman collection for AI Learn backend (auth + test generation). Set collection variables before running requests.",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-  },
-  "item": [
-    {
-      "name": "Health",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] }
-      }
+    "info": {
+        "name": "AI Learn API",
+        "_postman_id": "b4e4c9fa-5d6b-4a0c-9c1d-ailearn-collection",
+        "description": "Postman collection for AI Learn backend (auth + test generation). Set collection variables before running requests.",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
-    {
-      "name": "Auth",
-      "item": [
+    "item": [
         {
-          "name": "Register",
+            "name": "Health",
             "request": {
-              "method": "POST",
-              "header": [ { "key": "Content-Type", "value": "application/json" } ],
-              "body": {
-                "mode": "raw",
-                "raw": "{\n  \"email\": \"user{{randomInt}}@example.com\",\n  \"password\": \"Passw0rd!\",\n  \"displayName\": \"User {{randomInt}}\"\n}"
-              },
-              "url": { "raw": "{{baseUrl}}/api/v1/auth/register", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","register"] }
-            },
-            "response": []
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{baseUrl}}/health",
+                    "host": ["{{baseUrl}}"],
+                    "path": ["health"]
+                }
+            }
         },
         {
-          "name": "Login",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
+            "name": "Auth",
+            "item": [
+                {
+                    "name": "Register",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"email\": \"user{{randomInt}}@example.com\",\n  \"password\": \"Passw0rd!\",\n  \"displayName\": \"User {{randomInt}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/auth/register",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "v1", "auth", "register"]
+                        }
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Login",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "const json = pm.response.json();",
+                                    "if (json.accessToken) { pm.collectionVariables.set('accessToken', json.accessToken); }",
+                                    "if (json.refreshToken) { pm.collectionVariables.set('refreshToken', json.refreshToken); }"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"email\": \"{{loginEmail}}\",\n  \"password\": \"{{loginPassword}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/auth/login",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "v1", "auth", "login"]
+                        }
+                    }
+                },
+                {
+                    "name": "Refresh",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/auth/refresh",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "v1", "auth", "refresh"]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "const json = pm.response.json(); if(json.accessToken){pm.collectionVariables.set('accessToken', json.accessToken);} if(json.refreshToken){pm.collectionVariables.set('refreshToken', json.refreshToken);}"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Me",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "const json = pm.response.json(); if(json.user && json.user.id){ pm.collectionVariables.set('userId', json.user.id); }"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/auth/me",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "v1", "auth", "me"]
+                        }
+                    }
+                },
+                {
+                    "name": "Logout",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/auth/logout",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "v1", "auth", "logout"]
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Tests",
+            "item": [
+                {
+                    "name": "Generate Test (AI / Dry Run)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "const json = pm.response.json(); if(json.code){ pm.collectionVariables.set('testCode', json.code); } if(json.id){ pm.collectionVariables.set('testId', json.id); }"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"title\": \"Sample Quiz\",\n  \"questionCount\": 3,\n  \"difficulty\": \"easy\",\n  \"timeLimitSeconds\": 300,\n  \"expiresInMinutes\": 60,\n  \"sourceText\": \"Cells are basic building blocks of life.\",\n  \"extraInstructions\": \"Keep simple.\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/tests/generate",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "v1", "tests", "generate"]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Test By Code",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/tests/code/{{testCode}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": [
+                                "api",
+                                "v1",
+                                "tests",
+                                "code",
+                                "{{testCode}}"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "const json = pm.response.json(); if(Array.isArray(json.questions) && json.questions.length){ pm.collectionVariables.set('firstQuestionId', json.questions[0].id); }"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Start Attempt (Anon or Auth)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "const json = pm.response.json(); if(json.attemptId){ pm.collectionVariables.set('attemptId', json.attemptId); }"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"code\": \"{{testCode}}\",\n  \"participantName\": \"Optional When Auth\",\n  \"displayName\": \"Public Nick (anon only)\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/tests/start",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "v1", "tests", "start"]
+                        }
+                    }
+                },
+                {
+                    "name": "List My Tests (paginated)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/tests/mine?page=1&pageSize=10",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "v1", "tests", "mine"],
+                            "query": [
+                                { "key": "page", "value": "1" },
+                                { "key": "pageSize", "value": "10" }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "List Test Attempts (Owner)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/tests/{{testId}}/attempts",
+                            "host": ["{{baseUrl}}"],
+                            "path": [
+                                "api",
+                                "v1",
+                                "tests",
+                                "{{testId}}",
+                                "attempts"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "List My Attempts",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/tests/me/attempts",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "v1", "tests", "me", "attempts"]
+                        }
+                    }
+                },
+                {
+                    "name": "Update My Name",
+                    "request": {
+                        "method": "PATCH",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            },
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"displayName\": \"New Display Name\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/auth/me",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "v1", "auth", "me"]
+                        }
+                    }
+                },
+                {
+                    "name": "Submit Attempt",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"attemptId\": \"{{attemptId}}\",\n  \"answers\": [ { \"questionId\": \"{{firstQuestionId}}\", \"answer\": \"A\" } ]\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/tests/submit",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "v1", "tests", "submit"]
+                        }
+                    }
+                }
+            ]
+        }
+        ,
+        {
+            "name": "Users",
+            "item": [
+                {
+                    "name": "Get Public User",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/users/{{userId}}",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "v1", "users", "{{userId}}"]
+                        }
+                    }
+                }
+            ]
+        }
+    ],
+    "variable": [
+        { "key": "baseUrl", "value": "http://localhost:4000" },
+        { "key": "loginEmail", "value": "user@example.com" },
+        { "key": "loginPassword", "value": "Passw0rd!" },
+        { "key": "accessToken", "value": "" },
+        { "key": "refreshToken", "value": "" },
+        { "key": "testCode", "value": "" },
+        { "key": "testId", "value": "" },
+        { "key": "attemptId", "value": "" },
+        { "key": "firstQuestionId", "value": "" }
+    ],
+    "event": [
+        {
+            "listen": "prerequest",
+            "script": {
                 "exec": [
-                  "const json = pm.response.json();",
-                  "if (json.accessToken) { pm.collectionVariables.set('accessToken', json.accessToken); }",
-                  "if (json.refreshToken) { pm.collectionVariables.set('refreshToken', json.refreshToken); }"
+                    "// Auto attach Authorization header if missing & accessToken present",
+                    "if (pm.collectionVariables.get('accessToken')) {",
+                    "  const at = pm.collectionVariables.get('accessToken');",
+                    "  if (!pm.request.headers.has('Authorization')) { pm.request.headers.add({ key: 'Authorization', value: 'Bearer ' + at }); }",
+                    "}"
                 ],
                 "type": "text/javascript"
-              }
             }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [ { "key": "Content-Type", "value": "application/json" } ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"{{loginEmail}}\",\n  \"password\": \"{{loginPassword}}\"\n}"
-            },
-            "url": { "raw": "{{baseUrl}}/api/v1/auth/login", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","login"] }
-          }
-        },
-        {
-          "name": "Refresh",
-          "request": {
-            "method": "POST",
-            "header": [ { "key": "Content-Type", "value": "application/json" } ],
-            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}" },
-            "url": { "raw": "{{baseUrl}}/api/v1/auth/refresh", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","refresh"] }
-          },
-          "event": [ {
-            "listen": "test",
-            "script": { "exec": ["const json = pm.response.json(); if(json.accessToken){pm.collectionVariables.set('accessToken', json.accessToken);} if(json.refreshToken){pm.collectionVariables.set('refreshToken', json.refreshToken);}"], "type": "text/javascript" }
-          }]
-        },
-        {
-          "name": "Me",
-          "request": {
-            "method": "GET",
-            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
-            "url": { "raw": "{{baseUrl}}/api/v1/auth/me", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","me"] }
-          }
-        },
-        {
-          "name": "Logout",
-          "request": {
-            "method": "POST",
-            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
-            "url": { "raw": "{{baseUrl}}/api/v1/auth/logout", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","logout"] }
-          }
         }
-      ]
-    },
-    {
-      "name": "Tests",
-      "item": [
-        {
-          "name": "Generate Test (AI / Dry Run)",
-          "event": [ { "listen": "test", "script": { "exec": ["const json = pm.response.json(); if(json.code){ pm.collectionVariables.set('testCode', json.code); }"], "type": "text/javascript" } } ],
-          "request": {
-            "method": "POST",
-            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" } ],
-            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Sample Quiz\",\n  \"questionCount\": 3,\n  \"difficulty\": \"easy\",\n  \"timeLimitSeconds\": 300,\n  \"expiresInMinutes\": 60,\n  \"sourceText\": \"Cells are basic building blocks of life.\",\n  \"extraInstructions\": \"Keep simple.\"\n}" },
-            "url": { "raw": "{{baseUrl}}/api/v1/tests/generate", "host": ["{{baseUrl}}"], "path": ["api","v1","tests","generate"] }
-          }
-        },
-        {
-          "name": "Get Test By Code",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": { "raw": "{{baseUrl}}/api/v1/tests/code/{{testCode}}", "host": ["{{baseUrl}}"], "path": ["api","v1","tests","code","{{testCode}}"] }
-          },
-          "event": [ { "listen": "test", "script": { "exec": ["const json = pm.response.json(); if(Array.isArray(json.questions) && json.questions.length){ pm.collectionVariables.set('firstQuestionId', json.questions[0].id); }"], "type": "text/javascript" } } ]
-        },
-        {
-          "name": "Start Attempt",
-          "event": [ { "listen": "test", "script": { "exec": ["const json = pm.response.json(); if(json.attemptId){ pm.collectionVariables.set('attemptId', json.attemptId); }"], "type": "text/javascript" } } ],
-          "request": {
-            "method": "POST",
-            "header": [ { "key": "Content-Type", "value": "application/json" } ],
-            "body": { "mode": "raw", "raw": "{\n  \"code\": \"{{testCode}}\",\n  \"participantName\": \"Anon Tester\",\n  \"displayName\": \"Public Nick\"\n}" },
-            "url": { "raw": "{{baseUrl}}/api/v1/tests/start", "host": ["{{baseUrl}}"], "path": ["api","v1","tests","start"] }
-          }
-        },
-        {
-          "name": "List Test Attempts (Owner)",
-          "request": {
-            "method": "GET",
-            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
-            "url": { "raw": "{{baseUrl}}/api/v1/tests/{{testId}}/attempts", "host": ["{{baseUrl}}"], "path": ["api","v1","tests","{{testId}}","attempts"] }
-          }
-        },
-        {
-          "name": "List My Attempts",
-          "request": {
-            "method": "GET",
-            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
-            "url": { "raw": "{{baseUrl}}/api/v1/tests/me/attempts", "host": ["{{baseUrl}}"], "path": ["api","v1","tests","me","attempts"] }
-          }
-        },
-        {
-          "name": "Update My Name",
-          "request": {
-            "method": "PATCH",
-            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" } ],
-            "body": { "mode": "raw", "raw": "{\n  \"displayName\": \"New Display Name\"\n}" },
-            "url": { "raw": "{{baseUrl}}/api/v1/auth/me", "host": ["{{baseUrl}}"], "path": ["api","v1","auth","me"] }
-          }
-        },
-        {
-          "name": "Submit Attempt",
-          "request": {
-            "method": "POST",
-            "header": [ { "key": "Content-Type", "value": "application/json" } ],
-            "body": { "mode": "raw", "raw": "{\n  \"attemptId\": \"{{attemptId}}\",\n  \"answers\": [ { \"questionId\": \"{{firstQuestionId}}\", \"answer\": \"A\" } ]\n}" },
-            "url": { "raw": "{{baseUrl}}/api/v1/tests/submit", "host": ["{{baseUrl}}"], "path": ["api","v1","tests","submit"] }
-          }
-        }
-      ]
-    }
-  ],
-  "variable": [
-    { "key": "baseUrl", "value": "http://localhost:4000" },
-    { "key": "loginEmail", "value": "user@example.com" },
-    { "key": "loginPassword", "value": "Passw0rd!" },
-    { "key": "accessToken", "value": "" },
-    { "key": "refreshToken", "value": "" },
-    { "key": "testCode", "value": "" },
-    { "key": "attemptId", "value": "" },
-    { "key": "firstQuestionId", "value": "" }
-  ],
-  "event": [
-    {
-      "listen": "prerequest",
-      "script": {
-        "exec": [
-          "// Auto attach Authorization header if missing & accessToken present",
-          "if (pm.collectionVariables.get('accessToken')) {",
-          "  const at = pm.collectionVariables.get('accessToken');",
-          "  if (!pm.request.headers.has('Authorization')) { pm.request.headers.add({ key: 'Authorization', value: 'Bearer ' + at }); }",
-          "}"
-        ],
-        "type": "text/javascript"
-      }
-    }
-  ]
+    ]
 }

@@ -1,5 +1,6 @@
 import { AuthService } from "../services/authService.js";
 import { UserRepository } from "../repositories/userRepository.js";
+import { ApiError } from "../utils/ApiError.js";
 
 const authService = new AuthService();
 const userRepo = new UserRepository();
@@ -38,10 +39,12 @@ export async function refresh(req, res, next) {
     }
 }
 
-export async function me(req, res) {
-    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
-    const { id, email, display_name, created_at } = req.user;
-    res.json({ user: { id, email, displayName: display_name, createdAt: created_at } });
+export async function me(req, res, next) {
+    try {
+        if (!req.user) throw ApiError.unauthorized();
+        const { id, email, display_name, created_at } = req.user;
+        res.json({ user: { id, email, displayName: display_name, createdAt: created_at } });
+    } catch (e) { next(e); }
 }
 
 export async function logout(req, res, next) {
@@ -58,7 +61,7 @@ export async function updateMe(req, res, next) {
     try {
         const { displayName } = req.body;
         if (!displayName || displayName.length < 1 || displayName.length > 50)
-            return res.status(400).json({ error: "Invalid displayName" });
+            throw ApiError.badRequest("INVALID_DISPLAY_NAME", "Invalid displayName");
         const updated = await userRepo.updateDisplayName(
             req.user.id,
             displayName

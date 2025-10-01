@@ -96,6 +96,7 @@ MIT License
 ## Test Generation & Attempts API
 
 Flow summary:
+
 1. Authenticated user uploads or provides plain text content and requests generation.
 2. Backend (if `DRY_RUN_AI=false`) calls OpenRouter chat completions with JSON schema forcing structured quiz output, else produces mock data.
 3. Test stored with an invitation `code` + expiry + time limit.
@@ -106,22 +107,23 @@ Flow summary:
 
 Base: `/api/v1/tests`
 
-| Method | Path | Auth | Purpose |
-|--------|------|------|---------|
-| POST | `/generate` | Required | Generate & persist a test from provided text (uses env OPENROUTER_MODEL) |
-| GET | `/code/:code` | Public | Fetch test metadata & question shells (no answers) |
-| POST | `/start` | Public | Start an attempt (name + code) |
-| POST | `/submit` | Public | Submit answers for an attempt |
-| GET | `/:testId/attempts` | Owner | List attempts (id, participant/display names, score, timestamps) |
-| GET | `/me/attempts` | Auth | List authenticated user attempts with scores |
+| Method | Path                | Auth     | Purpose                                                                  |
+| ------ | ------------------- | -------- | ------------------------------------------------------------------------ |
+| POST   | `/generate`         | Required | Generate & persist a test from provided text (uses env OPENROUTER_MODEL) |
+| GET    | `/code/:code`       | Public   | Fetch test metadata & question shells (no answers)                       |
+| POST   | `/start`            | Public   | Start an attempt (name + code)                                           |
+| POST   | `/submit`           | Public   | Submit answers for an attempt                                            |
+| GET    | `/:testId/attempts` | Owner    | List attempts (id, participant/display names, score, timestamps)         |
+| GET    | `/me/attempts`      | Auth     | List authenticated user attempts with scores                             |
 
 User profile:
 
-| Method | Path | Auth | Purpose |
-|--------|------|------|---------|
-| PATCH | `/api/v1/auth/me` | Auth | Update user displayName |
+| Method | Path              | Auth | Purpose                 |
+| ------ | ----------------- | ---- | ----------------------- |
+| PATCH  | `/api/v1/auth/me` | Auth | Update user displayName |
 
 ### Generate Body (Updated)
+
 ```
 {
   "title": "Algebra Basics",
@@ -135,18 +137,23 @@ User profile:
   "params": {"topic": "algebra"}
 }
 ```
+
 Response: `{ id, code, expiresAt, timeLimitSeconds }`
 
 ### OpenRouter JSON Schema Strategy & Fallback
+
 Service first tries `response_format.json_schema` (unless `AI_SCHEMA_JSON=false`), and on 400 schema unsupported errors automatically retries without schema, parsing JSON from the raw content with a robust extractor.
 
 ### Invitation Code
+
 Random 8-char Base32-like (no ambiguous chars). Used for public sharing.
 
 ### Expiration & Time Limit
+
 `expiresInMinutes` sets test lifetime; participants starting before expiry get full `timeLimitSeconds` countdown on frontend.
 
 ### Attempts & Scoring
+
 Submissions now persist per-question answers in `test_attempt_answers` plus JSON summary in attempt row. Score is percentage of questions with both a correct answer key and a user answer matching (case-insensitive). If no answer keys, score is null. Future: partial credit & freeform AI evaluation.
 
 Anonymous attempts may include optional `displayName` separate from mandatory `participantName`.
@@ -154,11 +161,13 @@ Anonymous attempts may include optional `displayName` separate from mandatory `p
 Tests store `created_by` (user id of generator) enabling owner-only attempt listings.
 
 ### Environment Considerations
-- Keep `DRY_RUN_AI=true` in development to avoid API costs.
-- When enabling real generation ensure secrets set and consider rate-limiting / quotas.
+
+-   Keep `DRY_RUN_AI=true` in development to avoid API costs.
+-   When enabling real generation ensure secrets set and consider rate-limiting / quotas.
 
 ### Future Enhancements
-- Per-question adaptive difficulty
-- Streaming generation progress
-- Answer key encryption
-- AI-based scoring for free-form responses
+
+-   Per-question adaptive difficulty
+-   Streaming generation progress
+-   Answer key encryption
+-   AI-based scoring for free-form responses

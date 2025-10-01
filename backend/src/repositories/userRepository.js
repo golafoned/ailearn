@@ -41,9 +41,14 @@ export class UserRepository {
         return rowFromResult(res);
     }
 
-    async updateDisplayName(id, displayName){
+    async updateDisplayName(id, displayName) {
         const db = await getDb();
-        db.exec(`UPDATE users SET display_name='${displayName.replace(/'/g,"''")}' WHERE id='${id}';`);
+        db.exec(
+            `UPDATE users SET display_name='${displayName.replace(
+                /'/g,
+                "''"
+            )}' WHERE id='${id}';`
+        );
         return this.findById(id);
     }
 }

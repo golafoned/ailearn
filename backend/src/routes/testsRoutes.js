@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { validate } from "../middleware/validate.js";
-import { requireAuth } from "../middleware/auth.js";
+import { requireAuth, optionalAuth } from "../middleware/auth.js";
 import {
     generateTestSchema,
     startAttemptSchema,
@@ -28,7 +28,7 @@ router.post(
 // Public fetch metadata & question shells
 router.get("/code/:code", getTestByCode);
 // Start attempt (anonymous allowed)
-router.post("/start", validate(startAttemptSchema), startAttempt);
+router.post("/start", optionalAuth, validate(startAttemptSchema), startAttempt);
 // Submit answers
 router.post("/submit", validate(submitAttemptSchema), submitAttempt);
 // User view own attempts (must come before param route)
