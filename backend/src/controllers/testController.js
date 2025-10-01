@@ -231,7 +231,15 @@ export async function listTestAttempts(req, res, next) {
 export async function listMyAttempts(req, res, next) {
     try {
         const attempts = await attemptRepo.listByUser(req.user.id);
-        res.json({ attempts });
+        res.json({ attempts: attempts.map(a=>({
+            id: a.id,
+            testId: a.test_id,
+            testCode: a.test_code,
+            testTitle: a.test_title,
+            startedAt: a.started_at,
+            submittedAt: a.submitted_at,
+            score: a.score
+        })) });
     } catch (e) {
         next(e);
     }
@@ -263,4 +271,74 @@ export async function listMyTests(req, res, next) {
     } catch (e) {
         next(e);
     }
+}
+
+// New: attempt detail for participant (only own if linked to user OR anonymous attempt by id with token? we restrict to linked user or owner)
+export async function getAttemptDetail(req, res, next) {
+    try {
+        const { attemptId } = req.params;
+        const attempt = await attemptRepo.findById(attemptId);
+        if (!attempt) throw ApiError.notFound("Attempt not found", "ATTEMPT_NOT_FOUND");
+        // If attempt belongs to a user enforce same user; else if no user we allow if client supplies attemptId + (optionally) token? Keep simple: if no user_id return answers without correct answers.
+        const test = await testRepo.findById(attempt.test_id);
+        const isOwner = test?.created_by && test.created_by === req.user?.id;
+        const isUser = attempt.user_id && req.user?.id === attempt.user_id;
+        if (attempt.user_id && !isUser && !isOwner) throw ApiError.forbidden("Forbidden", "FORBIDDEN_ATTEMPT_DETAIL");
+        if (!attempt.submitted_at) throw ApiError.badRequest("ATTEMPT_NOT_SUBMITTED", "Attempt not submitted");
+        const answers = await attemptAnswersRepo.listForAttempt(attemptId);
+        // Hide correct answers if viewer is only the participant and not owner
+        const hideCorrect = !isOwner;
+        const detailed = answers.map(a => ({
+            questionId: a.question_id,
+            question: a.question_text,
+            userAnswer: a.user_answer || null,
+            correct: a.is_correct === 1 ? true : false,
+            correctAnswer: hideCorrect ? undefined : (a.correct_answer || null)
+        }));
+        res.json({ attemptId: attempt.id, testId: attempt.test_id, score: attempt.score, submittedAt: attempt.submitted_at, answers: detailed });
+    } catch (e) { next(e); }
+}
+
+// Owner: attempt detail with answers + correct answers always
+export async function getOwnerAttemptDetail(req, res, next) {
+    try {
+        const { testId, attemptId } = req.params;
+        const test = await testRepo.findById(testId);
+        if (!test) throw ApiError.notFound("Test not found", "TEST_NOT_FOUND");
+        if (test.created_by && test.created_by !== req.user?.id) throw ApiError.forbidden("Forbidden", "FORBIDDEN_ATTEMPT_DETAIL_OWNER");
+        const attempt = await attemptRepo.findById(attemptId);
+        if (!attempt || attempt.test_id !== testId) throw ApiError.notFound("Attempt not found", "ATTEMPT_NOT_FOUND");
+        if (!attempt.submitted_at) throw ApiError.badRequest("ATTEMPT_NOT_SUBMITTED", "Attempt not submitted");
+        const answers = await attemptAnswersRepo.listForAttempt(attemptId);
+        const detailed = answers.map(a=>({ questionId: a.question_id, question: a.question_text, userAnswer: a.user_answer || null, correctAnswer: a.correct_answer || null, isCorrect: a.is_correct === 1 }));
+        res.json({ attemptId: attempt.id, testId: attempt.test_id, participantName: attempt.participant_name, displayName: attempt.display_name, score: attempt.score, submittedAt: attempt.submitted_at, answers: detailed });
+    } catch (e) { next(e); }
+}
+
+// Leaderboard top N
+export async function getLeaderboard(req, res, next) {
+    try {
+        const { testId } = req.params;
+        const { limit = 10 } = req.query;
+        const test = await testRepo.findById(testId);
+        if (!test) throw ApiError.notFound("Test not found", "TEST_NOT_FOUND");
+        const attempts = await attemptRepo.listByTest(testId);
+        const filtered = attempts.filter(a=>a.score != null).slice(0, Math.min(100, parseInt(limit) || 10));
+        res.json({ testId, leaderboard: filtered.map(a=>({ id: a.id, participantName: a.participant_name, displayName: a.display_name, score: a.score, submittedAt: a.submitted_at })) });
+    } catch (e) { next(e); }
+}
+
+// Close test early
+export async function closeTest(req, res, next) {
+    try {
+        const { testId } = req.params;
+        const test = await testRepo.findById(testId);
+        if (!test) throw ApiError.notFound("Test not found", "TEST_NOT_FOUND");
+        if (test.created_by && test.created_by !== req.user?.id) throw ApiError.forbidden("Forbidden", "FORBIDDEN_CLOSE_TEST");
+        // Set expires_at to past
+        const dbMod = await import("../db/index.js");
+        const dbInstance = await dbMod.getDb();
+        dbInstance.exec(`UPDATE tests SET expires_at=datetime('now','-1 minute') WHERE id='${testId}';`);
+        res.json({ testId, closed: true });
+    } catch (e) { next(e); }
 }

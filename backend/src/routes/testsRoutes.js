@@ -14,6 +14,10 @@ import {
     listTestAttempts,
     listMyAttempts,
     listMyTests,
+    getAttemptDetail,
+    getOwnerAttemptDetail,
+    getLeaderboard,
+    closeTest
 } from "../controllers/testController.js";
 
 const router = Router();
@@ -37,5 +41,13 @@ router.get("/me/attempts", requireAuth, listMyAttempts);
 router.get("/mine", requireAuth, listMyTests);
 // Owner view attempts for a test
 router.get("/:testId/attempts", requireAuth, listTestAttempts);
+// Participant attempt detail (requires auth if attempt linked to user)
+router.get("/attempt/:attemptId", requireAuth, getAttemptDetail);
+// Owner attempt detail with answers
+router.get("/:testId/attempts/:attemptId", requireAuth, getOwnerAttemptDetail);
+// Leaderboard
+router.get("/:testId/leaderboard", getLeaderboard);
+// Close test early
+router.post("/:testId/close", requireAuth, closeTest);
 
 export default router;

@@ -48,7 +48,7 @@ export class TestAttemptRepository {
     async listByTest(testId) {
         const db = await getDb();
         const res = db.exec(
-            `SELECT * FROM test_attempts WHERE test_id='${testId}' ORDER BY started_at ASC;`
+            `SELECT * FROM test_attempts WHERE test_id='${testId}' ORDER BY (score IS NULL) ASC, score DESC, started_at ASC;`
         );
         if (!res.length) return [];
         const cols = res[0].columns;
@@ -60,9 +60,7 @@ export class TestAttemptRepository {
     }
     async listByUser(userId) {
         const db = await getDb();
-        const res = db.exec(
-            `SELECT * FROM test_attempts WHERE user_id='${userId}' ORDER BY started_at DESC;`
-        );
+        const res = db.exec(`SELECT a.*, t.code as test_code, t.title as test_title FROM test_attempts a LEFT JOIN tests t ON t.id=a.test_id WHERE a.user_id='${userId}' ORDER BY a.started_at DESC;`);
         if (!res.length) return [];
         const cols = res[0].columns;
         return res[0].values.map((v) => {
