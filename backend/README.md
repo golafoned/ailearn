@@ -199,18 +199,21 @@ Flow summary:
 
 Base: `/api/v1/tests`
 
-| Method | Path                           | Auth     | Purpose                                                                  |
-| ------ | ------------------------------ | -------- | ------------------------------------------------------------------------ |
-| POST   | `/generate`                    | Required | Generate & persist a test from provided text (uses env OPENROUTER_MODEL) |
-| GET    | `/code/:code`                  | Public   | Fetch test metadata & question shells (no answers)                       |
-| POST   | `/start`                       | Public   | Start an attempt (name + code)                                           |
-| POST   | `/submit`                      | Public   | Submit answers for an attempt                                            |
-| GET    | `/:testId/attempts`            | Owner    | List attempts (id, participant/display names, score, timestamps)         |
-| GET    | `/me/attempts`                 | Auth     | List authenticated user attempts with scores                             |
-| GET    | `/attempt/:attemptId`          | Auth     | Participant view of own attempt answers (hides correct answers)          |
-| GET    | `/:testId/attempts/:attemptId` | Owner    | Owner view full attempt answers incl. correct answers                    |
-| GET    | `/:testId/leaderboard`         | Public   | Leaderboard (top scored attempts; only attempts with score)              |
-| POST   | `/:testId/close`               | Owner    | Close test early (sets expiry to past)                                   |
+| Method | Path                                      | Auth     | Purpose                                                                      |
+| ------ | ----------------------------------------- | -------- | ---------------------------------------------------------------------------- |
+| POST   | `/generate`                               | Required | Generate & persist a test from provided text (uses env OPENROUTER_MODEL)     |
+| GET    | `/code/:code`                             | Public   | Fetch test metadata & question shells (no answers)                           |
+| POST   | `/start`                                  | Public   | Start an attempt (name + code)                                               |
+| POST   | `/submit`                                 | Public   | Submit answers for an attempt                                                |
+| GET    | `/:testId/attempts`                       | Owner    | List attempts (id, participant/display names, score, timestamps)             |
+| GET    | `/me/attempts`                            | Auth     | List authenticated user attempts with scores                                 |
+| GET    | `/attempt/:attemptId`                     | Auth     | Participant view of own attempt answers (hides correct answers)              |
+| GET    | `/:testId/attempts/:attemptId`            | Owner    | Owner view full attempt answers incl. correct answers, explanations, refs    |
+| GET    | `/:testId/leaderboard`                    | Public   | Leaderboard (top scored attempts; only attempts with score)                  |
+| POST   | `/:testId/close`                          | Owner    | Close test early (sets expiry to past)                                       |
+| POST   | `/review`                                 | Auth     | Generate a personalized review test from wrong answers (private to creator)  |
+| GET    | `/review/mine`                            | Auth     | List authenticated user's generated review/practice tests                    |
+| GET    | `/review/recommendations`                 | Auth     | Get topic recommendations derived from recent wrong answers                  |
 
 User profile:
 
@@ -260,7 +263,67 @@ Submissions now persist per-question answers in `test_attempt_answers` plus JSON
     -   Field `correctAnswer` is omitted unless requester is test owner.
 -   Owner (GET `/api/v1/tests/:testId/attempts/:attemptId`):
     -   Must be creator of the test.
-    -   Always receives `correctAnswer` and an `isCorrect` boolean per answer.
+    -   Always receives `correctAnswer`, `isCorrect`, plus per-question `explanation` and `reference` if present.
+
+### Explanations, Hints & References
+
+-   Each generated question stores `explanation` (why the answer is correct) and optional `reference` (short snippet from source or synthetic context).
+-   Participant attempt detail endpoint returns a `hint` for incorrect answers only. This hint is derived from the explanation with occurrences of the correct answer stripped to avoid leakage.
+-   Owners see full `explanation` & `reference` data for each answer in the owner attempt detail endpoint.
+-   If AI generation omits an explanation or reference, the backend synthesizes a fallback to guarantee presence for consistency.
+
+### Review / Practice Tests
+
+Purpose: Reinforce learner weak areas by generating new questions targeted at concepts previously answered incorrectly.
+
+Workflow:
+1. Learner completes one or more attempts on normal tests.
+2. Client calls `POST /api/v1/tests/review` with a `strategy` and either `attemptId` or `baseTestId`.
+3. Backend collects wrong answers, builds a pseudo-source corpus, and generates a new test flagged `is_review=1`.
+4. Review tests are PRIVATE: only the creating user may start attempts (`FORBIDDEN_REVIEW_START` if violated).
+5. Learner can list all review tests via `GET /api/v1/tests/review/mine`.
+6. Recommendations endpoint analyzes recent wrong answers and returns topic blocks to guide the next review test creation.
+
+Request Body (`POST /review`):
+
+```
+{
+  "strategy": "wrong_recent" | "spaced_repetition" | "mix",
+  "attemptId": "<attempt-id>" (optional if baseTestId provided),
+  "baseTestId": "<original-test-id>" (optional if attemptId provided),
+  "questionCount": 5,
+  "variantMode": "variant" // optional custom param
+}
+```
+
+Response (201):
+```
+{
+  "id": "...",
+  "code": "...",
+  "isReview": true,
+  "strategy": "wrong_recent",
+  "questionCount": 5,
+  "sourceAttempts": ["..."],
+  "reviewSourceTestId": "<id or null>"
+}
+```
+
+Recommendations (GET `/review/recommendations`):
+```
+{
+  "recommendations": [
+    { "topic": "mitochondria", "weight": 0.32, "suggestion": "Reinforce cellular respiration steps." },
+    { "topic": "ribosomes", "weight": 0.21, "suggestion": "Contrast protein synthesis stages." }
+  ]
+}
+```
+
+### Review Test Constraints
+
+-   Review generation enforces exact `questionCount` (pads/ trims as needed).
+-   All questions guaranteed to include `explanation` & `reference` (synthetic fallback if omitted by AI).
+-   Only owner can start attempts on review tests (`FORBIDDEN_REVIEW_START`).
 
 Leaderboard (GET `/api/v1/tests/:testId/leaderboard`):
 
@@ -273,12 +336,17 @@ Closing a Test (POST `/api/v1/tests/:testId/close`):
 
 ### New Error Codes
 
-| Code                           | Status | Scenario                                                |
-| ------------------------------ | ------ | ------------------------------------------------------- |
-| FORBIDDEN_ATTEMPT_DETAIL       | 403    | User tries to view another user's attempt (participant) |
-| FORBIDDEN_ATTEMPT_DETAIL_OWNER | 403    | Non-owner requests owner attempt detail                 |
-| FORBIDDEN_CLOSE_TEST           | 403    | Non-owner attempts to close a test                      |
-| ATTEMPT_NOT_SUBMITTED          | 400    | Attempt detail requested before submission              |
+| Code                            | Status | Scenario                                                         |
+| -------------------------------- | ------ | ---------------------------------------------------------------- |
+| FORBIDDEN_ATTEMPT_DETAIL         | 403    | User tries to view another user's attempt (participant view)     |
+| FORBIDDEN_ATTEMPT_DETAIL_OWNER   | 403    | Non-owner requests owner attempt detail                          |
+| FORBIDDEN_CLOSE_TEST             | 403    | Non-owner attempts to close a test                               |
+| ATTEMPT_NOT_SUBMITTED            | 400    | Attempt detail requested before submission                       |
+| FORBIDDEN_REVIEW_START           | 403    | Non-owner tries to start a review test                           |
+| REVIEW_INVALID_CONTEXT           | 400    | No valid wrong-answer context for review generation              |
+| REVIEW_STRATEGY_UNSUPPORTED      | 400    | Strategy not one of allowed values                               |
+| REVIEW_GENERATION_FAILED         | 500    | Downstream AI or synthesis failed                                |
+| GENERATION_INCOMPLETE            | 500    | AI failed to produce required question set (after retries)       |
 
 Existing codes (TEST_EXPIRED, ALREADY_SUBMITTED, etc.) apply unchanged.
 
@@ -297,3 +365,5 @@ Tests store `created_by` (user id of generator) enabling owner-only attempt list
 -   Streaming generation progress
 -   Answer key encryption
 -   AI-based scoring for free-form responses
+-   Spaced repetition scheduler integration for `spaced_repetition` strategy
+-   Per-user difficulty calibration

@@ -451,6 +451,64 @@
                             ]
                         }
                     }
+                },
+                {
+                    "name": "Generate Review Test",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "const json = pm.response.json(); if(json.code){ pm.collectionVariables.set('reviewTestCode', json.code); } if(json.id){ pm.collectionVariables.set('reviewTestId', json.id); }"
+                                ],
+                                "type": "text/javascript"
+                            }
+                        }
+                    ],
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {"key": "Authorization", "value": "Bearer {{accessToken}}"},
+                            {"key": "Content-Type", "value": "application/json"}
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"strategy\": \"wrong_recent\",\n  \"attemptId\": \"{{attemptId}}\",\n  \"questionCount\": 5,\n  \"variantMode\": \"variant\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/tests/review",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api","v1","tests","review"]
+                        }
+                    }
+                },
+                {
+                    "name": "List My Review Tests",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {"key": "Authorization", "value": "Bearer {{accessToken}}"}
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/tests/review/mine",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api","v1","tests","review","mine"]
+                        }
+                    }
+                },
+                {
+                    "name": "Review Recommendations",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {"key": "Authorization", "value": "Bearer {{accessToken}}"}
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/tests/review/recommendations",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api","v1","tests","review","recommendations"]
+                        }
+                    }
                 }
             ]
         },
