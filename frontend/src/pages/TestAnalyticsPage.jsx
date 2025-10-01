@@ -6,14 +6,8 @@ import { ApiError } from "../utils/apiClient";
 export function TestAnalyticsPage() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const {
-        getTestById,
-        fetchAttemptsForTest,
-        attemptsForTest,
-        fetchLeaderboard,
-        leaderboard,
-        closeTest,
-    } = useTestData();
+    const { getTestById, fetchAttemptsForTest, attemptsForTest, closeTest } =
+        useTestData();
     const [testMeta, setTestMeta] = useState(() => getTestById(id));
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -29,7 +23,6 @@ export function TestAnalyticsPage() {
         setError(null);
         try {
             await fetchAttemptsForTest(id);
-            await fetchLeaderboard(id).catch(() => {});
             if (!testMeta)
                 setTestMeta(getTestById(id) || { id, title: "Test" });
         } catch (e) {
@@ -45,7 +38,7 @@ export function TestAnalyticsPage() {
         return () => {
             active = false;
         };
-    }, [id, fetchAttemptsForTest, fetchLeaderboard, getTestById, testMeta]);
+    }, [id, fetchAttemptsForTest, getTestById, testMeta]);
 
     useEffect(() => {
         loadOnce();
@@ -57,25 +50,9 @@ export function TestAnalyticsPage() {
         setError(null);
         try {
             await fetchAttemptsForTest(id);
-            await fetchLeaderboard(id);
         } catch (e) {
             setError(
                 e instanceof ApiError ? e.message : "Failed to load attempts"
-            );
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const refreshLeaderboard = async () => {
-        if (!id) return;
-        setLoading(true);
-        setError(null);
-        try {
-            await fetchLeaderboard(id);
-        } catch (e) {
-            setError(
-                e instanceof ApiError ? e.message : "Failed to load leaderboard"
             );
         } finally {
             setLoading(false);
@@ -89,7 +66,6 @@ export function TestAnalyticsPage() {
         try {
             await closeTest(id);
             await fetchAttemptsForTest(id);
-            await fetchLeaderboard(id);
         } catch (e) {
             setError(
                 e instanceof ApiError ? e.message : "Failed to close test"
@@ -120,17 +96,8 @@ export function TestAnalyticsPage() {
                 </button>
             </div>
             {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
-            <p className="text-gray-500 mb-6 text-sm">
-                Attempts for this test.
-            </p>
+            <p className="text-gray-500 mb-6 text-sm">Leaderboard.</p>
             <div className="flex items-center gap-4 mb-6">
-                <button
-                    onClick={refreshLeaderboard}
-                    className="text-sm px-3 py-1.5 rounded-md border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50"
-                    disabled={loading}
-                >
-                    Refresh Leaderboard
-                </button>
                 <button
                     onClick={handleCloseTest}
                     className="text-sm px-3 py-1.5 rounded-md border border-red-300 bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-50"
@@ -139,10 +106,13 @@ export function TestAnalyticsPage() {
                     Close Test
                 </button>
             </div>
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-10">
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                 <table className="min-w-full text-left text-sm">
                     <thead className="border-b border-gray-200 bg-gray-50">
                         <tr>
+                            <th className="px-6 py-3 font-medium text-gray-900">
+                                #
+                            </th>
                             <th className="px-6 py-3 font-medium text-gray-900">
                                 Participant
                             </th>
@@ -161,7 +131,7 @@ export function TestAnalyticsPage() {
                         {loading && (
                             <tr>
                                 <td
-                                    colSpan={4}
+                                    colSpan={5}
                                     className="px-6 py-6 text-center text-gray-500"
                                 >
                                     Loading...
@@ -171,7 +141,7 @@ export function TestAnalyticsPage() {
                         {!loading && attemptsForTest.length === 0 && (
                             <tr>
                                 <td
-                                    colSpan={4}
+                                    colSpan={5}
                                     className="px-6 py-6 text-center text-gray-500"
                                 >
                                     No attempts yet.
@@ -179,7 +149,31 @@ export function TestAnalyticsPage() {
                             </tr>
                         )}
                         {!loading &&
-                            attemptsForTest.map((a) => (
+                            attemptsForTest
+                                .slice()
+                                .sort((a, b) => {
+                                    // Sort descending by score, then by submittedAt asc
+                                    const sa = a.score ?? -Infinity;
+                                    const sb = b.score ?? -Infinity;
+                                    if (sb !== sa) return sb - sa;
+                                    const ta = a.submittedAt
+                                        ? new Date(a.submittedAt).getTime()
+                                        : Infinity;
+                                    const tb = b.submittedAt
+                                        ? new Date(b.submittedAt).getTime()
+                                        : Infinity;
+                                    return ta - tb;
+                                })
+                                .map((a, idx) => {
+                                    const medal =
+                                        idx === 0
+                                            ? "🥇"
+                                            : idx === 1
+                                            ? "🥈"
+                                            : idx === 2
+                                            ? "🥉"
+                                            : null;
+                                    return (
                                 <tr
                                     key={a.id}
                                     className="hover:bg-gray-50 cursor-pointer"
@@ -189,6 +183,15 @@ export function TestAnalyticsPage() {
                                         )
                                     }
                                 >
+                                    <td className="px-6 py-3 font-semibold text-gray-900">
+                                        {medal ? (
+                                            <span className="text-lg">
+                                                {medal}
+                                            </span>
+                                        ) : (
+                                            idx + 1
+                                        )}
+                                    </td>
                                     <td className="px-6 py-3 font-medium text-gray-900">
                                         {a.displayName ||
                                             a.participantName ||
@@ -212,55 +215,8 @@ export function TestAnalyticsPage() {
                                         {a.score == null ? "—" : `${a.score}%`}
                                     </td>
                                 </tr>
-                            ))}
-                    </tbody>
-                </table>
-            </div>
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                <div className="px-6 py-4 border-b bg-gray-50">
-                    <h2 className="font-semibold">Leaderboard</h2>
-                </div>
-                <table className="min-w-full text-left text-sm">
-                    <thead className="border-b border-gray-200 bg-gray-50">
-                        <tr>
-                            <th className="px-6 py-3 font-medium text-gray-900">
-                                Rank
-                            </th>
-                            <th className="px-6 py-3 font-medium text-gray-900">
-                                Participant
-                            </th>
-                            <th className="px-6 py-3 font-medium text-gray-900 text-right">
-                                Score
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                        {leaderboard && leaderboard.length > 0 ? (
-                            leaderboard.map((entry, idx) => (
-                                <tr key={entry.attemptId || idx}>
-                                    <td className="px-6 py-3">{idx + 1}</td>
-                                    <td className="px-6 py-3 font-medium text-gray-900">
-                                        {entry.displayName ||
-                                            entry.participantName ||
-                                            "Participant"}
-                                    </td>
-                                    <td className="px-6 py-3 font-semibold text-right">
-                                        {entry.score == null
-                                            ? "—"
-                                            : `${entry.score}%`}
-                                    </td>
-                                </tr>
-                            ))
-                        ) : (
-                            <tr>
-                                <td
-                                    colSpan={3}
-                                    className="px-6 py-6 text-center text-gray-500"
-                                >
-                                    No leaderboard data yet.
-                                </td>
-                            </tr>
-                        )}
+                                    );
+                                })}
                     </tbody>
                 </table>
             </div>
