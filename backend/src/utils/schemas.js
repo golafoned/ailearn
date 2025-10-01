@@ -31,41 +31,52 @@ export const generateTestSchema = z.object({
     body: z.object({
         title: z.string().min(3),
         questionCount: z.number().int().min(1).max(50),
-        difficulty: z.enum(['easy','medium','hard']).default('medium'),
+        difficulty: z.enum(["easy", "medium", "hard"]).default("medium"),
         timeLimitSeconds: z.number().int().min(30).max(7200),
-        expiresInMinutes: z.number().int().min(5).max(60*24*30),
+        expiresInMinutes: z
+            .number()
+            .int()
+            .min(5)
+            .max(60 * 24 * 30),
         extraInstructions: z.string().max(2000).optional(),
         sourceText: z.string().min(10),
         filename: z.string().optional(),
-        params: z.record(z.any()).optional()
+        params: z.record(z.any()).optional(),
     }),
     query: z.object({}).passthrough(),
-    params: z.object({}).passthrough()
+    params: z.object({}).passthrough(),
 });
 
 export const startAttemptSchema = z.object({
     body: z.object({
         code: z.string().min(4),
-        participantName: z.string().min(1).max(80),
-        displayName: z.string().min(1).max(80).optional()
+        participantName: z.string().min(1).max(80).optional(),
+        displayName: z.string().min(1).max(80).optional(),
     }),
     query: z.object({}).passthrough(),
-    params: z.object({}).passthrough()
+    params: z.object({}).passthrough(),
 });
 
 export const submitAttemptSchema = z.object({
     body: z.object({
         attemptId: z.string().uuid(),
-        answers: z.array(z.object({ questionId: z.string(), answer: z.string().nullable() })).min(1)
+        answers: z
+            .array(
+                z.object({
+                    questionId: z.string(),
+                    answer: z.string().nullable(),
+                })
+            )
+            .min(1),
     }),
     query: z.object({}).passthrough(),
-    params: z.object({}).passthrough()
+    params: z.object({}).passthrough(),
 });
 
 export const updateMeSchema = z.object({
     body: z.object({
-        displayName: z.string().min(1).max(50)
+        displayName: z.string().min(1).max(50),
     }),
     query: z.object({}).passthrough(),
-    params: z.object({}).passthrough()
+    params: z.object({}).passthrough(),
 });
