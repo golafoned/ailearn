@@ -368,12 +368,21 @@
                     "request": {
                         "method": "GET",
                         "header": [
-                            {"key": "Authorization", "value": "Bearer {{accessToken}}"}
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            }
                         ],
                         "url": {
                             "raw": "{{baseUrl}}/api/v1/tests/attempt/{{attemptId}}",
                             "host": ["{{baseUrl}}"],
-                            "path": ["api", "v1", "tests", "attempt", "{{attemptId}}"]
+                            "path": [
+                                "api",
+                                "v1",
+                                "tests",
+                                "attempt",
+                                "{{attemptId}}"
+                            ]
                         }
                     }
                 },
@@ -382,12 +391,22 @@
                     "request": {
                         "method": "GET",
                         "header": [
-                            {"key": "Authorization", "value": "Bearer {{accessToken}}"}
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            }
                         ],
                         "url": {
                             "raw": "{{baseUrl}}/api/v1/tests/{{testId}}/attempts/{{attemptId}}",
                             "host": ["{{baseUrl}}"],
-                            "path": ["api", "v1", "tests", "{{testId}}", "attempts", "{{attemptId}}"]
+                            "path": [
+                                "api",
+                                "v1",
+                                "tests",
+                                "{{testId}}",
+                                "attempts",
+                                "{{attemptId}}"
+                            ]
                         }
                     }
                 },
@@ -399,8 +418,14 @@
                         "url": {
                             "raw": "{{baseUrl}}/api/v1/tests/{{testId}}/leaderboard?limit=10",
                             "host": ["{{baseUrl}}"],
-                            "path": ["api", "v1", "tests", "{{testId}}", "leaderboard"],
-                            "query": [ {"key": "limit", "value": "10"} ]
+                            "path": [
+                                "api",
+                                "v1",
+                                "tests",
+                                "{{testId}}",
+                                "leaderboard"
+                            ],
+                            "query": [{ "key": "limit", "value": "10" }]
                         }
                     }
                 },
@@ -408,11 +433,22 @@
                     "name": "Close Test",
                     "request": {
                         "method": "POST",
-                        "header": [ {"key": "Authorization", "value": "Bearer {{accessToken}}"} ],
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}"
+                            }
+                        ],
                         "url": {
                             "raw": "{{baseUrl}}/api/v1/tests/{{testId}}/close",
                             "host": ["{{baseUrl}}"],
-                            "path": ["api", "v1", "tests", "{{testId}}", "close"]
+                            "path": [
+                                "api",
+                                "v1",
+                                "tests",
+                                "{{testId}}",
+                                "close"
+                            ]
                         }
                     }
                 }

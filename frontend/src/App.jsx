@@ -9,6 +9,8 @@ import { TestGeneratedPage } from "./pages/TestGeneratedPage";
 import { TestLandingPage } from "./pages/TestLandingPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { TestAnalyticsPage } from "./pages/TestAnalyticsPage";
+import { AttemptDetailPage } from "./pages/AttemptDetailPage";
+import { MyAttemptDetailPage } from "./pages/MyAttemptDetailPage";
 import { useAuth } from "./contexts/AuthContext";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
@@ -70,6 +72,22 @@ export default function App() {
                         element={
                             <PrivateRoute>
                                 <TestAnalyticsPage />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/tests/:testId/attempts/:attemptId"
+                        element={
+                            <PrivateRoute>
+                                <AttemptDetailPage />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/attempts/:attemptId"
+                        element={
+                            <PrivateRoute>
+                                <MyAttemptDetailPage />
                             </PrivateRoute>
                         }
                     />

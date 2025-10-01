@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Button } from "../components/Button";
 import { IconCopy, IconCheck } from "../components/Icons";
 import { copyToClipboard } from "../utils/clipboard";
@@ -6,7 +6,13 @@ import { useNavigate } from "react-router-dom";
 import { useTestData } from "../contexts/TestDataContext";
 
 export function TestGeneratedPage() {
-    const { previewTest, lastGeneratedCode, attempt } = useTestData();
+    const {
+        previewTest,
+        lastGeneratedCode,
+        attempt,
+        fetchAttemptDetail,
+        attemptDetail,
+    } = useTestData();
     const code =
         previewTest?.code || attempt?.code || lastGeneratedCode || "unknown";
     const testLink = useMemo(
@@ -29,6 +35,15 @@ export function TestGeneratedPage() {
     const isAttemptResult = attempt && attempt.submittedAt; // user finished a real attempt
     let heading = "Your Test is Ready!";
     if (isAttemptResult) heading = "Test Completed";
+    // Load participant attempt detail (only after real attempt submitted)
+    useEffect(() => {
+        if (attempt && attempt.submittedAt) {
+            fetchAttemptDetail(attempt.id).catch(() => {});
+        }
+    }, [attempt, fetchAttemptDetail]);
+
+    const participantQuestions = attemptDetail?.questions || [];
+
     return (
         <div className="max-w-2xl mx-auto px-4 py-24 sm:py-32 text-center">
             <h1 className="text-3xl sm:text-4xl font-bold mb-4 text-gray-900">
@@ -98,6 +113,58 @@ export function TestGeneratedPage() {
                     </div>
                 </div>
             </div>
+            {isAttemptResult && participantQuestions.length > 0 && (
+                <div className="mt-10 text-left">
+                    <h2 className="text-xl font-semibold mb-4">Your Answers</h2>
+                    <ul className="space-y-4">
+                        {participantQuestions.map((q, idx) => {
+                            const chosen = q.answer;
+                            return (
+                                <li
+                                    key={q.id || idx}
+                                    className="border rounded-lg p-4 bg-white"
+                                >
+                                    <p className="font-medium text-gray-900 mb-2">
+                                        Q{idx + 1}.{" "}
+                                        {q.prompt || q.question || "Question"}
+                                    </p>
+                                    {q.options && Array.isArray(q.options) ? (
+                                        <ul className="space-y-1">
+                                            {q.options.map((opt, i) => {
+                                                const isChosen = chosen === i;
+                                                return (
+                                                    <li
+                                                        key={i}
+                                                        className={`text-sm px-2 py-1 rounded ${
+                                                            isChosen
+                                                                ? "bg-blue-50 text-blue-700"
+                                                                : "text-gray-700"
+                                                        }`}
+                                                    >
+                                                        {opt}
+                                                        {isChosen && (
+                                                            <span className="ml-2 text-xs">
+                                                                (your answer)
+                                                            </span>
+                                                        )}
+                                                    </li>
+                                                );
+                                            })}
+                                        </ul>
+                                    ) : (
+                                        <p className="text-sm">
+                                            Your answer:{" "}
+                                            {chosen == null
+                                                ? "—"
+                                                : String(chosen)}
+                                        </p>
+                                    )}
+                                </li>
+                            );
+                        })}
+                    </ul>
+                </div>
+            )}
             <Button
                 onClick={() => navigate("/dashboard")}
                 variant="secondary"

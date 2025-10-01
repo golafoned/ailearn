@@ -183,21 +183,31 @@ export function DashboardPage() {
                                     {myAttempts.map((a) => (
                                         <tr
                                             key={a.id}
-                                            className="hover:bg-gray-50"
+                                            className="hover:bg-gray-50 cursor-pointer"
+                                            onClick={() =>
+                                                navigate(`/attempts/${a.id}`)
+                                            }
+                                            aria-label={`Open attempt ${a.id}`}
                                         >
                                             <td className="py-2 pr-4">
                                                 <div className="font-medium text-gray-900 truncate max-w-[220px]">
-                                                    {testTitleMap[a.test_id] ||
+                                                    {a.testTitle ||
+                                                        testTitleMap[
+                                                            a.testId
+                                                        ] ||
                                                         "Test"}
                                                 </div>
                                                 <div className="text-xs text-gray-500 font-mono">
-                                                    {a.id.slice(0, 8)}...
+                                                    {a.testCode ||
+                                                        a.id.slice(0, 8)}
                                                 </div>
                                             </td>
                                             <td className="py-2 pr-4 text-xs text-gray-600">
-                                                {new Date(
-                                                    a.started_at
-                                                ).toLocaleString()}
+                                                {a.startedAt
+                                                    ? new Date(
+                                                          a.startedAt
+                                                      ).toLocaleString()
+                                                    : "—"}
                                             </td>
                                             <td className="py-2 pr-4 font-semibold">
                                                 {a.score == null

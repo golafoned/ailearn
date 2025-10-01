@@ -199,18 +199,18 @@ Flow summary:
 
 Base: `/api/v1/tests`
 
-| Method | Path                | Auth     | Purpose                                                                  |
-| ------ | ------------------- | -------- | ------------------------------------------------------------------------ |
-| POST   | `/generate`         | Required | Generate & persist a test from provided text (uses env OPENROUTER_MODEL) |
-| GET    | `/code/:code`       | Public   | Fetch test metadata & question shells (no answers)                       |
-| POST   | `/start`            | Public   | Start an attempt (name + code)                                           |
-| POST   | `/submit`           | Public   | Submit answers for an attempt                                            |
-| GET    | `/:testId/attempts` | Owner    | List attempts (id, participant/display names, score, timestamps)         |
-| GET    | `/me/attempts`      | Auth     | List authenticated user attempts with scores                             |
-| GET    | `/attempt/:attemptId` | Auth   | Participant view of own attempt answers (hides correct answers)          |
-| GET    | `/:testId/attempts/:attemptId` | Owner | Owner view full attempt answers incl. correct answers         |
-| GET    | `/:testId/leaderboard` | Public | Leaderboard (top scored attempts; only attempts with score)              |
-| POST   | `/:testId/close`    | Owner    | Close test early (sets expiry to past)                                   |
+| Method | Path                           | Auth     | Purpose                                                                  |
+| ------ | ------------------------------ | -------- | ------------------------------------------------------------------------ |
+| POST   | `/generate`                    | Required | Generate & persist a test from provided text (uses env OPENROUTER_MODEL) |
+| GET    | `/code/:code`                  | Public   | Fetch test metadata & question shells (no answers)                       |
+| POST   | `/start`                       | Public   | Start an attempt (name + code)                                           |
+| POST   | `/submit`                      | Public   | Submit answers for an attempt                                            |
+| GET    | `/:testId/attempts`            | Owner    | List attempts (id, participant/display names, score, timestamps)         |
+| GET    | `/me/attempts`                 | Auth     | List authenticated user attempts with scores                             |
+| GET    | `/attempt/:attemptId`          | Auth     | Participant view of own attempt answers (hides correct answers)          |
+| GET    | `/:testId/attempts/:attemptId` | Owner    | Owner view full attempt answers incl. correct answers                    |
+| GET    | `/:testId/leaderboard`         | Public   | Leaderboard (top scored attempts; only attempts with score)              |
+| POST   | `/:testId/close`               | Owner    | Close test early (sets expiry to past)                                   |
 
 User profile:
 
@@ -254,31 +254,31 @@ Submissions now persist per-question answers in `test_attempt_answers` plus JSON
 
 ### Attempt Visibility & Answer Redaction
 
-- Participant (GET `/api/v1/tests/attempt/:attemptId`):
-  - Must be the user who owns the attempt (if `user_id` linked) OR the test owner.
-  - Returns each question with `userAnswer` and `correct` boolean.
-  - Field `correctAnswer` is omitted unless requester is test owner.
-- Owner (GET `/api/v1/tests/:testId/attempts/:attemptId`):
-  - Must be creator of the test.
-  - Always receives `correctAnswer` and an `isCorrect` boolean per answer.
+-   Participant (GET `/api/v1/tests/attempt/:attemptId`):
+    -   Must be the user who owns the attempt (if `user_id` linked) OR the test owner.
+    -   Returns each question with `userAnswer` and `correct` boolean.
+    -   Field `correctAnswer` is omitted unless requester is test owner.
+-   Owner (GET `/api/v1/tests/:testId/attempts/:attemptId`):
+    -   Must be creator of the test.
+    -   Always receives `correctAnswer` and an `isCorrect` boolean per answer.
 
 Leaderboard (GET `/api/v1/tests/:testId/leaderboard`):
 
-- Sorted descending by score (null scores excluded) then by earliest submission.
-- Limit defaults to 10 (capped at 100). Returns participant & display names, score, submittedAt.
+-   Sorted descending by score (null scores excluded) then by earliest submission.
+-   Limit defaults to 10 (capped at 100). Returns participant & display names, score, submittedAt.
 
 Closing a Test (POST `/api/v1/tests/:testId/close`):
 
-- Owner only; sets `expires_at` to a past timestamp so further `/start` calls return `TEST_EXPIRED` (410).
+-   Owner only; sets `expires_at` to a past timestamp so further `/start` calls return `TEST_EXPIRED` (410).
 
 ### New Error Codes
 
-| Code                          | Status | Scenario                                                |
-| ----------------------------- | ------ | ------------------------------------------------------- |
-| FORBIDDEN_ATTEMPT_DETAIL      | 403    | User tries to view another user's attempt (participant) |
-| FORBIDDEN_ATTEMPT_DETAIL_OWNER| 403    | Non-owner requests owner attempt detail                 |
-| FORBIDDEN_CLOSE_TEST          | 403    | Non-owner attempts to close a test                      |
-| ATTEMPT_NOT_SUBMITTED         | 400    | Attempt detail requested before submission              |
+| Code                           | Status | Scenario                                                |
+| ------------------------------ | ------ | ------------------------------------------------------- |
+| FORBIDDEN_ATTEMPT_DETAIL       | 403    | User tries to view another user's attempt (participant) |
+| FORBIDDEN_ATTEMPT_DETAIL_OWNER | 403    | Non-owner requests owner attempt detail                 |
+| FORBIDDEN_CLOSE_TEST           | 403    | Non-owner attempts to close a test                      |
+| ATTEMPT_NOT_SUBMITTED          | 400    | Attempt detail requested before submission              |
 
 Existing codes (TEST_EXPIRED, ALREADY_SUBMITTED, etc.) apply unchanged.
 

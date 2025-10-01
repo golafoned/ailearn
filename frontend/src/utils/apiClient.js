@@ -22,6 +22,18 @@ export class ApiError extends Error {
     }
 }
 
+// Map backend error codes to user-friendly messages (extend as needed)
+export function mapErrorCode(code, fallback) {
+    if (!code) return fallback;
+    const table = {
+        FORBIDDEN_ATTEMPT_DETAIL: "You can't view that attempt yet.",
+        ATTEMPT_NOT_SUBMITTED: "Attempt not submitted yet.",
+        TEST_CLOSED: "This test is closed.",
+        TEST_EXPIRED: "This test has expired.",
+    };
+    return table[code] || fallback;
+}
+
 export async function apiFetch(
     path,
     { method = "GET", body, retry = true, headers = {} } = {}

@@ -17,7 +17,7 @@ import {
     getAttemptDetail,
     getOwnerAttemptDetail,
     getLeaderboard,
-    closeTest
+    closeTest,
 } from "../controllers/testController.js";
 
 const router = Router();

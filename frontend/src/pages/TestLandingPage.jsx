@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTestData } from "../contexts/TestDataContext";
 import { Button } from "../components/Button";
 import { useAuth } from "../contexts/AuthContext";
+import { useToast } from "../contexts/ToastContext";
 
 export function TestLandingPage() {
     const { code } = useParams();
@@ -19,6 +20,9 @@ export function TestLandingPage() {
     const [displayName, setDisplayName] = useState("");
     const [startError, setStartError] = useState(null);
     const { isAuthenticated, user } = useAuth();
+    const toast = useToast();
+    const autoStartedRef = useRef(false);
+    const [testStatusCode, setTestStatusCode] = useState(null); // e.g., TEST_EXPIRED, TEST_CLOSED
 
     useEffect(() => {
         if (code) fetchTestByCode(code.toUpperCase());
@@ -27,6 +31,7 @@ export function TestLandingPage() {
     const onStart = async (e) => {
         if (e) e.preventDefault();
         setStartError(null);
+        setTestStatusCode(null);
         let finalParticipant = participantName.trim();
         let finalDisplay = displayName.trim();
         if (isAuthenticated) {
@@ -46,27 +51,53 @@ export function TestLandingPage() {
                 displayName: finalDisplay || undefined,
             });
             navigate("/attempt");
-        } catch {
-            setStartError("Unable to start attempt");
+        } catch (e) {
+            // Attempt to read backend code from generic error message (context stores only message currently)
+            const msg = (e && e.message) || "Unable to start attempt";
+            if (/TEST_EXPIRED/.test(msg)) {
+                setTestStatusCode("TEST_EXPIRED");
+                setStartError("This test has expired.");
+                toast.error("This test has expired.");
+            } else if (/TEST_CLOSED/.test(msg)) {
+                setTestStatusCode("TEST_CLOSED");
+                setStartError("This test is closed.");
+                toast.error("This test is closed.");
+            } else {
+                setStartError("Unable to start attempt");
+                toast.error("Unable to start attempt");
+            }
         }
     };
 
     // Auto-start for authenticated users once test metadata loads and no attempt yet
     useEffect(() => {
-        if (isAuthenticated && currentTest && !attempt && !loading) {
+        if (
+            isAuthenticated &&
+            currentTest &&
+            !attempt &&
+            !loading &&
+            !autoStartedRef.current &&
+            !testStatusCode
+        ) {
+            autoStartedRef.current = true;
             onStart();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isAuthenticated, currentTest, attempt, loading]);
+    }, [isAuthenticated, currentTest, attempt, loading, testStatusCode]);
 
     const renderError = () => {
         if (!error) return null;
         // error from context has only message; for richer codes we could extend context
-        const msg = /EXPIRED/i.test(error)
-            ? "This test has expired."
-            : /not found/i.test(error)
-            ? "Test code not found."
-            : error;
+        const msg =
+            testStatusCode === "TEST_EXPIRED"
+                ? "This test has expired."
+                : testStatusCode === "TEST_CLOSED"
+                ? "This test is closed."
+                : /EXPIRED/i.test(error)
+                ? "This test has expired."
+                : /not found/i.test(error)
+                ? "Test code not found."
+                : error;
         return <p className="text-sm text-red-600 mb-4">{msg}</p>;
     };
 
@@ -140,9 +171,17 @@ export function TestLandingPage() {
                                 </Button>
                             </form>
                         )}
-                        {isAuthenticated && !attempt && (
+                        {isAuthenticated && !attempt && !testStatusCode && (
                             <p className="text-sm text-gray-500">
                                 Starting test automatically...
+                            </p>
+                        )}
+                        {testStatusCode && (
+                            <p className="text-sm text-red-600 mt-4">
+                                {testStatusCode === "TEST_EXPIRED" &&
+                                    "This test can no longer be taken (expired)."}
+                                {testStatusCode === "TEST_CLOSED" &&
+                                    "The owner has closed this test."}
                             </p>
                         )}
                     </>
