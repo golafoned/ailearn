@@ -45,8 +45,9 @@ export function PracticeSessionCreatePage() {
                 questionCount,
             });
 
-            // Navigate to test taking page with session context
-            navigate(`/code/${session.testCode}`, {
+            // Navigate to test taking page with session context (use code or testCode)
+            const testCode = session.testCode || session.code;
+            navigate(`/code/${testCode}`, {
                 state: { sessionId: session.sessionId, isAdaptive: true },
             });
         } catch (e) {

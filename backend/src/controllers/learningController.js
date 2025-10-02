@@ -296,6 +296,7 @@ export async function createSession(req, res, next) {
             sessionId,
             testId,
             code,
+            testCode: code, // add explicit testCode alias for frontend consistency
             sessionType,
             concepts: conceptNames.map((name) => {
                 const c = selectedConcepts.find(
