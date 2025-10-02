@@ -20,7 +20,7 @@ import {
     closeTest,
     generateReviewTest,
     listMyReviewTests,
-    getReviewRecommendations
+    getReviewRecommendations,
 } from "../controllers/testController.js";
 import { reviewGenerateSchema } from "../utils/schemas.js";
 
@@ -55,7 +55,12 @@ router.get("/:testId/leaderboard", getLeaderboard);
 router.post("/:testId/close", requireAuth, closeTest);
 
 // Review / practice endpoints
-router.post("/review", requireAuth, validate(reviewGenerateSchema), generateReviewTest);
+router.post(
+    "/review",
+    requireAuth,
+    validate(reviewGenerateSchema),
+    generateReviewTest
+);
 router.get("/review/mine", requireAuth, listMyReviewTests);
 router.get("/review/recommendations", requireAuth, getReviewRecommendations);
 

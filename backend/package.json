@@ -8,6 +8,7 @@
         "dev": "cross-env NODE_ENV=development nodemon src/server.js",
         "start": "node src/server.js",
         "test": "cross-env NODE_ENV=test node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand --detectOpenHandles",
+        "seed": "node seed-user1.js",
         "lint": "echo 'add eslint later'"
     },
     "keywords": [

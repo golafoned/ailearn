@@ -30,6 +30,13 @@ export function mapErrorCode(code, fallback) {
         ATTEMPT_NOT_SUBMITTED: "Attempt not submitted yet.",
         TEST_CLOSED: "This test is closed.",
         TEST_EXPIRED: "This test has expired.",
+        FORBIDDEN_REVIEW_START:
+            "You cannot start this review test. It belongs to another user.",
+        REVIEW_INVALID_CONTEXT:
+            "No eligible wrong answers to build a review. Try completing a test first.",
+        REVIEW_STRATEGY_UNSUPPORTED: "Unsupported review strategy.",
+        REVIEW_GENERATION_FAILED: "Failed to generate review test.",
+        GENERATION_INCOMPLETE: "Review generation incomplete.",
     };
     return table[code] || fallback;
 }

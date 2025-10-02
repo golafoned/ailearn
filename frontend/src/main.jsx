@@ -6,6 +6,7 @@ import App from "./App.jsx";
 import { AuthProvider } from "./contexts/AuthContext";
 import { TestDataProvider } from "./contexts/TestDataContext";
 import { ToastProvider } from "./contexts/ToastContext";
+import { LearningProvider } from "./contexts/LearningContext";
 
 createRoot(document.getElementById("root")).render(
     <StrictMode>
@@ -13,7 +14,9 @@ createRoot(document.getElementById("root")).render(
             <ToastProvider>
                 <AuthProvider>
                     <TestDataProvider>
-                        <App />
+                        <LearningProvider>
+                            <App />
+                        </LearningProvider>
                     </TestDataProvider>
                 </AuthProvider>
             </ToastProvider>

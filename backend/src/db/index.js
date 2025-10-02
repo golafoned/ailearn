@@ -37,6 +37,12 @@ export async function getDb() {
     return db;
 }
 
+export async function saveDb() {
+    if (!initialized) return;
+    const dbPath = path.resolve(env.dbFile);
+    persistDatabase(dbPath, SQL, db);
+}
+
 function exec(sql) {
     db.exec(sql);
 }

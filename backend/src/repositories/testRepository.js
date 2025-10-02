@@ -27,12 +27,25 @@ export class TestRepository {
             "''"
         )}','${test.expires_at}',${test.time_limit_seconds},${
             test.created_by ? `'${test.created_by}'` : "NULL"
-        },${test.is_review ? 1 : 0},${test.review_source_test_id ? `'${test.review_source_test_id}'` : "NULL"},${test.review_origin_attempt_ids ? `'${JSON.stringify(test.review_origin_attempt_ids).replace(/'/g, "''")}'` : "NULL"},${test.review_strategy ? `'${test.review_strategy}'` : "NULL"});`);
+        },${test.is_review ? 1 : 0},${
+            test.review_source_test_id
+                ? `'${test.review_source_test_id}'`
+                : "NULL"
+        },${
+            test.review_origin_attempt_ids
+                ? `'${JSON.stringify(test.review_origin_attempt_ids).replace(
+                      /'/g,
+                      "''"
+                  )}'`
+                : "NULL"
+        },${test.review_strategy ? `'${test.review_strategy}'` : "NULL"});`);
         return this.findById(test.id);
     }
     async findByCode(code) {
         const db = await getDb();
-        return row(db.exec(`SELECT * FROM tests WHERE code='${code}' LIMIT 1;`));
+        return row(
+            db.exec(`SELECT * FROM tests WHERE code='${code}' LIMIT 1;`)
+        );
     }
     async findById(id) {
         const db = await getDb();
@@ -40,20 +53,34 @@ export class TestRepository {
     }
     async listByOwner(userId) {
         const db = await getDb();
-        const res = db.exec(`SELECT * FROM tests WHERE created_by='${userId}' ORDER BY created_at DESC;`);
+        const res = db.exec(
+            `SELECT * FROM tests WHERE created_by='${userId}' ORDER BY created_at DESC;`
+        );
         if (!res.length) return [];
         const cols = res[0].columns;
-        return res[0].values.map(v=>{ const o={}; cols.forEach((c,i)=>o[c]=v[i]); return o; });
+        return res[0].values.map((v) => {
+            const o = {};
+            cols.forEach((c, i) => (o[c] = v[i]));
+            return o;
+        });
     }
     async listByOwnerPaged(userId, { page, pageSize }) {
         const db = await getDb();
         const offset = (page - 1) * pageSize;
-        const res = db.exec(`SELECT * FROM tests WHERE created_by='${userId}' ORDER BY created_at DESC LIMIT ${pageSize} OFFSET ${offset};`);
-        const countRes = db.exec(`SELECT COUNT(*) as c FROM tests WHERE created_by='${userId}';`);
+        const res = db.exec(
+            `SELECT * FROM tests WHERE created_by='${userId}' ORDER BY created_at DESC LIMIT ${pageSize} OFFSET ${offset};`
+        );
+        const countRes = db.exec(
+            `SELECT COUNT(*) as c FROM tests WHERE created_by='${userId}';`
+        );
         const total = countRes.length ? countRes[0].values[0][0] : 0;
         if (!res.length) return { items: [], total };
         const cols = res[0].columns;
-        const items = res[0].values.map(v=>{ const o={}; cols.forEach((c,i)=>o[c]=v[i]); return o; });
+        const items = res[0].values.map((v) => {
+            const o = {};
+            cols.forEach((c, i) => (o[c] = v[i]));
+            return o;
+        });
         return { items, total };
     }
     async createReviewTest(data) {
@@ -61,9 +88,15 @@ export class TestRepository {
     }
     async listReviewByUser(userId) {
         const db = await getDb();
-        const res = db.exec(`SELECT * FROM tests WHERE created_by='${userId}' AND is_review=1 ORDER BY created_at DESC;`);
+        const res = db.exec(
+            `SELECT * FROM tests WHERE created_by='${userId}' AND is_review=1 ORDER BY created_at DESC;`
+        );
         if (!res.length) return [];
         const cols = res[0].columns;
-        return res[0].values.map(v=>{ const o={}; cols.forEach((c,i)=>o[c]=v[i]); return o; });
+        return res[0].values.map((v) => {
+            const o = {};
+            cols.forEach((c, i) => (o[c] = v[i]));
+            return o;
+        });
     }
 }

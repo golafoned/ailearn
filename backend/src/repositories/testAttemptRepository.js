@@ -73,10 +73,16 @@ export class TestAttemptRepository {
     }
     async listByTestAndUser(testId, userId) {
         const db = await getDb();
-        const res = db.exec(`SELECT * FROM test_attempts WHERE test_id='${testId}' AND user_id='${userId}' AND submitted_at IS NOT NULL ORDER BY submitted_at DESC LIMIT 50;`);
+        const res = db.exec(
+            `SELECT * FROM test_attempts WHERE test_id='${testId}' AND user_id='${userId}' AND submitted_at IS NOT NULL ORDER BY submitted_at DESC LIMIT 50;`
+        );
         if (!res.length) return [];
         const cols = res[0].columns;
-        return res[0].values.map(v=>{ const o={}; cols.forEach((c,i)=>o[c]=v[i]); return o; });
+        return res[0].values.map((v) => {
+            const o = {};
+            cols.forEach((c, i) => (o[c] = v[i]));
+            return o;
+        });
     }
     async listWrongAnswersForUser({ userId, limit = 100 }) {
         const db = await getDb();
@@ -86,7 +92,11 @@ export class TestAttemptRepository {
             ORDER BY ta.submitted_at DESC LIMIT ${limit};`);
         if (!res.length) return [];
         const cols = res[0].columns;
-        return res[0].values.map(v=>{ const o={}; cols.forEach((c,i)=>o[c]=v[i]); return o; });
+        return res[0].values.map((v) => {
+            const o = {};
+            cols.forEach((c, i) => (o[c] = v[i]));
+            return o;
+        });
     }
 }
 

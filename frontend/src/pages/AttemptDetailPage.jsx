@@ -3,6 +3,45 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useTestData } from "../contexts/TestDataContext";
 import { ApiError } from "../utils/apiClient";
 
+// Simple accordion component for explanation/reference
+function ExplanationAccordion({ explanation, reference }) {
+    const [isOpen, setIsOpen] = useState(false);
+
+    if (!explanation && !reference) return null;
+
+    return (
+        <div className="mt-3 border border-blue-200 rounded-md overflow-hidden">
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="w-full px-4 py-2 bg-blue-50 hover:bg-blue-100 text-left text-sm font-medium text-blue-900 flex justify-between items-center transition-colors"
+            >
+                <span>📚 Explanation & Reference</span>
+                <span className="text-blue-600">{isOpen ? "−" : "+"}</span>
+            </button>
+            {isOpen && (
+                <div className="px-4 py-3 bg-white text-sm space-y-3">
+                    {explanation && (
+                        <div>
+                            <p className="font-semibold text-gray-700 mb-1">
+                                Explanation:
+                            </p>
+                            <p className="text-gray-600">{explanation}</p>
+                        </div>
+                    )}
+                    {reference && (
+                        <div>
+                            <p className="font-semibold text-gray-700 mb-1">
+                                Reference:
+                            </p>
+                            <p className="text-gray-600 italic">{reference}</p>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
 export function AttemptDetailPage() {
     const { testId, attemptId } = useParams();
     const navigate = useNavigate();
@@ -131,6 +170,10 @@ export function AttemptDetailPage() {
                                         Correct answer: {correct}
                                     </p>
                                 )}
+                                <ExplanationAccordion
+                                    explanation={a.explanation}
+                                    reference={a.reference}
+                                />
                             </div>
                         </div>
                     );

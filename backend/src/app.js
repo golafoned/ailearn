@@ -9,6 +9,7 @@ import { getDb } from "./db/index.js";
 import authRoutes from "./routes/authRoutes.js";
 import testsRoutes from "./routes/testsRoutes.js";
 import usersRoutes from "./routes/usersRoutes.js";
+import learningRoutes from "./routes/learningRoutes.js";
 
 export async function createApp() {
     await getDb(); // ensure DB & migrations ready
@@ -24,6 +25,7 @@ export async function createApp() {
     app.use("/api/v1/auth", authRoutes);
     app.use("/api/v1/tests", testsRoutes);
     app.use("/api/v1/users", usersRoutes);
+    app.use("/api/v1/learning", learningRoutes);
 
     app.use(notFound);
     app.use(errorHandler);

@@ -11,6 +11,12 @@ import { ProfilePage } from "./pages/ProfilePage";
 import { TestAnalyticsPage } from "./pages/TestAnalyticsPage";
 import { AttemptDetailPage } from "./pages/AttemptDetailPage";
 import { MyAttemptDetailPage } from "./pages/MyAttemptDetailPage";
+import { ReviewTestsPage } from "./pages/ReviewTestsPage";
+import { ReviewTestLandingPage } from "./pages/ReviewTestLandingPage";
+import { LearningDashboardPage } from "./pages/LearningDashboardPage";
+import { PracticeSessionCreatePage } from "./pages/PracticeSessionCreatePage";
+import { AchievementsPage } from "./pages/AchievementsPage";
+import { SessionResultsPage } from "./pages/SessionResultsPage";
 import { useAuth } from "./contexts/AuthContext";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
@@ -88,6 +94,56 @@ export default function App() {
                         element={
                             <PrivateRoute>
                                 <MyAttemptDetailPage />
+                            </PrivateRoute>
+                        }
+                    />
+                    {/* Review test routes */}
+                    <Route
+                        path="/review-tests"
+                        element={
+                            <PrivateRoute>
+                                <ReviewTestsPage />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/review-tests/:code"
+                        element={
+                            <PrivateRoute>
+                                <ReviewTestLandingPage />
+                            </PrivateRoute>
+                        }
+                    />
+                    {/* Adaptive Learning routes */}
+                    <Route
+                        path="/learning"
+                        element={
+                            <PrivateRoute>
+                                <LearningDashboardPage />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/learning/practice/create"
+                        element={
+                            <PrivateRoute>
+                                <PracticeSessionCreatePage />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/learning/achievements"
+                        element={
+                            <PrivateRoute>
+                                <AchievementsPage />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/learning/session/results"
+                        element={
+                            <PrivateRoute>
+                                <SessionResultsPage />
                             </PrivateRoute>
                         }
                     />

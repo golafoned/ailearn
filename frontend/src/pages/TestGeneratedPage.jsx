@@ -165,13 +165,24 @@ export function TestGeneratedPage() {
                     </ul>
                 </div>
             )}
-            <Button
-                onClick={() => navigate("/dashboard")}
-                variant="secondary"
-                className="mt-8"
-            >
-                {isAttemptResult ? "Return to Dashboard" : "Back to Dashboard"}
-            </Button>
+            <div className="mt-8 flex gap-4 justify-center">
+                {isAttemptResult && attempt?.id && (
+                    <Button
+                        onClick={() => navigate(`/attempts/${attempt.id}`)}
+                        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                    >
+                        📝 View Detailed Results & Hints
+                    </Button>
+                )}
+                <Button
+                    onClick={() => navigate("/dashboard")}
+                    variant="secondary"
+                >
+                    {isAttemptResult
+                        ? "Return to Dashboard"
+                        : "Back to Dashboard"}
+                </Button>
+            </div>
         </div>
     );
 }

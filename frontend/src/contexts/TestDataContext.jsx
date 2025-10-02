@@ -31,6 +31,10 @@ export function TestDataProvider({ children }) {
     const [attemptDetail, setAttemptDetail] = useState(null); // participant view of own attempt detail
     const [ownerAttemptDetail, setOwnerAttemptDetail] = useState(null); // owner view of specific participant attempt
     const [leaderboard, setLeaderboard] = useState([]); // leaderboard entries
+    const [reviewTests, setReviewTests] = useState([]); // review tests created by user
+    const [recommendations, setRecommendations] = useState([]); // practice recommendations
+    const [recommendationsLastFetch, setRecommendationsLastFetch] =
+        useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [errorCode, setErrorCode] = useState(null);
@@ -321,6 +325,99 @@ export function TestDataProvider({ children }) {
         [tests]
     );
 
+    // Generate review test
+    const generateReview = useCallback(
+        async ({
+            strategy,
+            attemptId,
+            baseTestId,
+            questionCount,
+            variantMode,
+        }) => {
+            setLoading(true);
+            setError(null);
+            try {
+                const body = { strategy, questionCount };
+                if (attemptId) body.attemptId = attemptId;
+                if (baseTestId) body.baseTestId = baseTestId;
+                if (variantMode) body.variantMode = variantMode;
+                const resp = await apiFetch("/api/v1/tests/review", {
+                    method: "POST",
+                    body,
+                });
+                // Add to local review list
+                setReviewTests((prev) => [resp, ...prev]);
+                return resp;
+            } catch (e) {
+                if (e instanceof ApiError) {
+                    const friendly = mapErrorCode(e.code, e.message);
+                    setErrorCode(e.code || null);
+                    setError(friendly);
+                    toast.error(friendly);
+                } else {
+                    setError("Failed to generate review test");
+                    toast.error("Failed to generate review test");
+                }
+                throw e;
+            } finally {
+                setLoading(false);
+            }
+        },
+        [toast]
+    );
+
+    // Fetch review tests list
+    const fetchReviewTests = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const data = await apiFetch("/api/v1/tests/review/mine");
+            setReviewTests(data.items || []);
+            return data.items || [];
+        } catch (e) {
+            if (e instanceof ApiError) {
+                setErrorCode(e.code || null);
+                setError(mapErrorCode(e.code, e.message));
+            } else setError("Failed to load review tests");
+            throw e;
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    // Fetch recommendations (with caching)
+    const fetchRecommendations = useCallback(async () => {
+        const now = Date.now();
+        // Cache for 3 minutes
+        if (
+            recommendationsLastFetch &&
+            now - recommendationsLastFetch < 180000
+        ) {
+            return recommendations;
+        }
+        setLoading(true);
+        setError(null);
+        try {
+            const data = await apiFetch("/api/v1/tests/review/recommendations");
+            setRecommendations(data.recommendations || []);
+            setRecommendationsLastFetch(now);
+            return data.recommendations || [];
+        } catch (e) {
+            if (e instanceof ApiError) {
+                setErrorCode(e.code || null);
+                setError(mapErrorCode(e.code, e.message));
+            } else setError("Failed to load recommendations");
+            throw e;
+        } finally {
+            setLoading(false);
+        }
+    }, [recommendations, recommendationsLastFetch]);
+
+    // Invalidate recommendations cache
+    const invalidateRecommendations = useCallback(() => {
+        setRecommendationsLastFetch(null);
+    }, []);
+
     const value = useMemo(
         () => ({
             // State
@@ -334,6 +431,8 @@ export function TestDataProvider({ children }) {
             attemptDetail,
             ownerAttemptDetail,
             leaderboard,
+            reviewTests,
+            recommendations,
             loading,
             error,
             errorCode,
@@ -360,6 +459,10 @@ export function TestDataProvider({ children }) {
             setOwnerAttemptDetail,
             setLeaderboard,
             setErrorCode,
+            generateReview,
+            fetchReviewTests,
+            fetchRecommendations,
+            invalidateRecommendations,
         }),
         [
             tests,
@@ -372,6 +475,8 @@ export function TestDataProvider({ children }) {
             attemptDetail,
             ownerAttemptDetail,
             leaderboard,
+            reviewTests,
+            recommendations,
             loading,
             error,
             errorCode,
@@ -388,6 +493,10 @@ export function TestDataProvider({ children }) {
             fetchMyTests,
             testsPageInfo,
             getTestById,
+            generateReview,
+            fetchReviewTests,
+            fetchRecommendations,
+            invalidateRecommendations,
         ]
     );
 

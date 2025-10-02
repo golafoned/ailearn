@@ -21,6 +21,18 @@ export function Header() {
                     {isAuthenticated ? (
                         <>
                             <button
+                                onClick={() => navigate("/learning")}
+                                className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors px-3 py-2 rounded-lg hover:bg-blue-50"
+                            >
+                                📚 Learning
+                            </button>
+                            <button
+                                onClick={() => navigate("/dashboard")}
+                                className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors px-3 py-2 rounded-lg hover:bg-blue-50"
+                            >
+                                Dashboard
+                            </button>
+                            <button
                                 onClick={() => navigate("/profile")}
                                 className="text-gray-600 hover:text-blue-600 transition-colors"
                             >
