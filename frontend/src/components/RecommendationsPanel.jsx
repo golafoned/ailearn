@@ -26,10 +26,13 @@ export function RecommendationsPanel() {
         load();
     }, [fetchRecommendations]);
 
-    // Sort recommendations by weight (descending)
-    const sortedRecommendations = [...recommendations].sort(
-        (a, b) => (b.weight || 0) - (a.weight || 0)
-    );
+    // Sort recommendations: primary by numeric priority desc (if provided), then by weight desc
+    const sortedRecommendations = [...recommendations].sort((a, b) => {
+        const ap = typeof a.priority === "number" ? a.priority : -1;
+        const bp = typeof b.priority === "number" ? b.priority : -1;
+        if (bp !== ap) return bp - ap;
+        return (b.weight || 0) - (a.weight || 0);
+    });
 
     if (loading) {
         return (
@@ -82,33 +85,45 @@ export function RecommendationsPanel() {
             <div className="flex flex-wrap gap-2">
                 {sortedRecommendations.map((rec, idx) => {
                     const weight = rec.weight || 0;
-                    const priority =
-                        weight >= 0.7
-                            ? "high"
-                            : weight >= 0.4
-                            ? "medium"
-                            : "low";
-
+                    // Prefer explicit numeric priority if present (>=3 high, 2 medium, else low)
+                    let priorityLabel;
+                    if (typeof rec.priority === "number") {
+                        if (rec.priority >= 3) priorityLabel = "high";
+                        else if (rec.priority === 2) priorityLabel = "medium";
+                        else priorityLabel = "low";
+                    } else {
+                        // fallback to weight heuristic
+                        priorityLabel =
+                            weight >= 0.7
+                                ? "high"
+                                : weight >= 0.4
+                                ? "medium"
+                                : "low";
+                    }
                     const colors = {
                         high: "bg-red-100 border-red-300 text-red-800",
-                        medium: "bg-yellow-100 border-yellow-300 text-yellow-800",
-                        low: "bg-blue-100 border-blue-300 text-blue-800",
+                        medium: "bg-amber-100 border-amber-300 text-amber-800",
+                        low: "bg-emerald-100 border-emerald-300 text-emerald-800",
                     };
-
                     return (
                         <div
                             key={idx}
-                            className={`group relative inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-medium ${colors[priority]} cursor-help transition-transform hover:scale-105`}
+                            className={`group relative inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-medium ${colors[priorityLabel]} cursor-help transition-transform hover:scale-105`}
                             title={rec.suggestion || "Review this topic"}
                         >
-                            <span>{rec.topic}</span>
-                            {weight > 0 && (
-                                <span className="text-xs opacity-75">
+                            <span className="font-semibold capitalize">
+                                {rec.topic}
+                            </span>
+                            {typeof rec.priority === "number" && (
+                                <span className="text-[10px] font-semibold opacity-80 tracking-wide uppercase">
+                                    {priorityLabel}
+                                </span>
+                            )}
+                            {weight > 0 && typeof rec.priority !== "number" && (
+                                <span className="text-xs opacity-70">
                                     {Math.round(weight * 100)}%
                                 </span>
                             )}
-
-                            {/* Tooltip on hover */}
                             {rec.suggestion && (
                                 <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
                                     <p className="font-semibold mb-1">
@@ -122,15 +137,20 @@ export function RecommendationsPanel() {
                     );
                 })}
             </div>
-
             <div className="mt-4 pt-4 border-t border-gray-200">
-                <p className="text-xs text-gray-500">
-                    <span className="inline-block w-2 h-2 rounded-full bg-red-400 mr-1"></span>
-                    High priority
-                    <span className="inline-block w-2 h-2 rounded-full bg-yellow-400 ml-3 mr-1"></span>
-                    Medium priority
-                    <span className="inline-block w-2 h-2 rounded-full bg-blue-400 ml-3 mr-1"></span>
-                    Low priority
+                <p className="text-xs text-gray-500 flex flex-wrap items-center gap-4">
+                    <span className="inline-flex items-center gap-1">
+                        <span className="inline-block w-2 h-2 rounded-full bg-red-500"></span>
+                        High
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                        <span className="inline-block w-2 h-2 rounded-full bg-amber-400"></span>
+                        Medium
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                        <span className="inline-block w-2 h-2 rounded-full bg-emerald-400"></span>
+                        Low
+                    </span>
                 </p>
             </div>
         </div>

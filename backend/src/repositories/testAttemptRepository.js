@@ -98,6 +98,48 @@ export class TestAttemptRepository {
             return o;
         });
     }
+
+    // List attempts for a specific concept by checking tests whose concepts_json contains the concept
+    async listByConcept(
+        userId,
+        conceptName,
+        { includeInProgress = true } = {}
+    ) {
+        const db = await getDb();
+        const safeConcept = conceptName.replace(/'/g, "''");
+        const submittedFilter = includeInProgress
+            ? "1=1"
+            : "ta.submitted_at IS NOT NULL";
+        const res = db.exec(`SELECT 
+                ta.id as attempt_id,
+                ta.test_id,
+                ta.score,
+                ta.submitted_at,
+                ta.started_at,
+                t.code as test_code,
+                t.title as test_title,
+                COUNT(taa.id) as answered_count,
+                SUM(CASE WHEN taa.is_correct = 1 THEN 1 ELSE 0 END) as correct_count
+            FROM test_attempts ta
+            INNER JOIN tests t ON t.id = ta.test_id
+            LEFT JOIN test_attempt_answers taa ON taa.attempt_id = ta.id
+            WHERE ta.user_id='${userId}' 
+              AND ${submittedFilter}
+          AND (
+              (t.concepts_json IS NOT NULL AND t.concepts_json LIKE '%"${safeConcept}"%')
+             OR (t.concepts_json IS NULL AND t.params_json LIKE '%"concepts":[%"${safeConcept}"%')
+          )
+            GROUP BY ta.id, ta.test_id, t.code, t.title, ta.score, ta.submitted_at, ta.started_at
+            ORDER BY COALESCE(ta.submitted_at, ta.started_at) DESC;`);
+        if (!res.length) return [];
+        const cols = res[0].columns;
+        return res[0].values.map((v) => {
+            const o = {};
+            cols.forEach((c, i) => (o[c] = v[i]));
+            o.status = o.submitted_at ? "completed" : "in_progress";
+            return o;
+        });
+    }
 }
 
 export class AttemptAnswersRepository {

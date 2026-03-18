@@ -50,13 +50,19 @@ export function ReviewGeneratorModal({ isOpen, onClose, attemptId = null }) {
             return;
         }
 
+        // Basic client-side format guard (mirrors relaxed backend regex)
+        if (!/^[a-zA-Z0-9_-]{6,}$/.test(selectedAttemptId)) {
+            toast.error("Invalid attempt id format");
+            return;
+        }
+
         setLoading(true);
         try {
             const result = await generateReview({
                 strategy,
                 attemptId: selectedAttemptId,
                 questionCount,
-                variantMode,
+                variantMode: variantMode ? "variant" : "exact",
             });
 
             toast.success(

@@ -15,8 +15,36 @@ export class TestRepository {
         const db = await getDb();
         const jsonParams = JSON.stringify(test.params_json);
         const jsonQuestions = JSON.stringify(test.questions_json);
-        db.exec(`INSERT INTO tests (id, code, title, source_filename, source_text, model, params_json, questions_json, expires_at, time_limit_seconds, created_by, is_review, review_source_test_id, review_origin_attempt_ids, review_strategy)
-      VALUES ('${test.id}','${test.code}','${test.title.replace(/'/g, "''")}',${
+        // Support newer adaptive learning columns if present (graceful NULL otherwise)
+        const conceptsJson = Array.isArray(test.concepts_json)
+            ? `'${JSON.stringify(test.concepts_json).replace(/'/g, "''")}'`
+            : test.concepts_json
+            ? `'${String(test.concepts_json).replace(/'/g, "''")}'`
+            : "NULL";
+        const adaptiveMode = test.adaptive_mode
+            ? 1
+            : test.adaptiveMode
+            ? 1
+            : test.adaptive_mode === 0
+            ? 0
+            : test.adaptiveMode === 0
+            ? 0
+            : test.adaptive_mode || test.adaptiveMode
+            ? 1
+            : 0; // normalize various flags
+        const difficultyDist = test.difficulty_distribution
+            ? `'${JSON.stringify(test.difficulty_distribution).replace(
+                  /'/g,
+                  "''"
+              )}'`
+            : "NULL";
+
+        db.exec(`INSERT INTO tests (
+            id, code, title, source_filename, source_text, model, params_json, questions_json, expires_at, time_limit_seconds, created_by,
+            is_review, review_source_test_id, review_origin_attempt_ids, review_strategy,
+            concepts_json, adaptive_mode, difficulty_distribution
+        ) VALUES (
+            '${test.id}','${test.code}','${test.title.replace(/'/g, "''")}',${
             test.source_filename
                 ? `'${test.source_filename.replace(/'/g, "''")}'`
                 : "NULL"
@@ -38,7 +66,9 @@ export class TestRepository {
                       "''"
                   )}'`
                 : "NULL"
-        },${test.review_strategy ? `'${test.review_strategy}'` : "NULL"});`);
+        },${test.review_strategy ? `'${test.review_strategy}'` : "NULL"},
+            ${conceptsJson}, ${adaptiveMode}, ${difficultyDist}
+        );`);
         return this.findById(test.id);
     }
     async findByCode(code) {

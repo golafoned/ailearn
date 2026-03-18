@@ -80,7 +80,13 @@ export const reviewGenerateSchema = z.object({
                 .enum(["wrong_recent", "spaced_repetition", "mix"])
                 .default("wrong_recent"),
             baseTestId: z.string().uuid().optional(),
-            attemptId: z.string().uuid().optional(),
+            // attemptId in existing data may not be a RFC4122 uuid (e.g., 'attempt-002'); allow relaxed pattern while still validating basic structure
+            attemptId: z
+                .string()
+                .regex(/^[a-zA-Z0-9_-]{6,}$/i, {
+                    message: "Invalid attemptId format",
+                })
+                .optional(),
             questionCount: z.number().int().min(1).max(40).default(8),
             variantMode: z
                 .enum(["variant", "exact", "adaptive"])

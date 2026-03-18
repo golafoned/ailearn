@@ -7,6 +7,9 @@ import {
     createSession,
     completeSession,
     getConceptDetails,
+    getConceptAttempts,
+    ensureConceptAttempt,
+    queryConceptAttempts,
     getProgressChart,
     getRecommendations,
     getAchievements,
@@ -40,11 +43,29 @@ router.post(
 
 // Phase 2: High priority
 router.get("/concepts/:name/details", getConceptDetails);
+router.get("/concepts/:name/attempts", getConceptAttempts);
+router.post("/concepts/:name/attempts/ensure", ensureConceptAttempt);
+router.get("/concept-attempts", queryConceptAttempts);
 router.get("/progress-chart", validate(progressChartSchema), getProgressChart);
 
 // Phase 3: Medium priority
 router.get("/recommendations", getRecommendations);
 router.get("/achievements", getAchievements);
 router.get("/sessions/history", getSessionHistory);
+
+// Debug: list registered learning routes (remove in production)
+router.get("/_routes", (req, res) => {
+    const stack = router.stack
+        .filter((l) => l.route)
+        .map((l) => ({
+            path:
+                Object.keys(l.route.methods)
+                    .map((m) => m.toUpperCase())
+                    .join(", ") +
+                " " +
+                l.route.path,
+        }));
+    res.json({ routes: stack });
+});
 
 export default router;

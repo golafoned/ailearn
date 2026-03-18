@@ -26,6 +26,9 @@ export function LearningProvider({ children }) {
     const [recommendations, setRecommendations] = useState([]);
     const [sessionHistory, setSessionHistory] = useState([]);
     const [conceptDetails, setConceptDetails] = useState(null);
+    const [conceptAttempts, setConceptAttempts] = useState({}); // keyed by concept name
+    const [conceptAttemptsLoading, setConceptAttemptsLoading] = useState(false);
+    const failedConceptAttemptsRef = React.useRef(new Set());
 
     // Loading states
     const [loading, setLoading] = useState(false);
@@ -89,8 +92,9 @@ export function LearningProvider({ children }) {
                         conceptName
                     )}/details`
                 );
-                setConceptDetails(data.concept);
-                return data.concept;
+                // Backend now returns richer structure (concept, history, attempts, prerequisites, relatedConcepts)
+                setConceptDetails(data);
+                return data;
             } catch (e) {
                 const msg =
                     e instanceof ApiError
@@ -117,6 +121,71 @@ export function LearningProvider({ children }) {
             throw e;
         }
     }, [toast]);
+
+    const inFlightAttemptsRef = React.useRef(new Set());
+    const fetchedOnceRef = React.useRef(new Set());
+    const fetchConceptAttempts = useCallback(
+        async (conceptName, { limit = 25, offset = 0, force = false } = {}) => {
+            if (!conceptName) return null;
+            if (failedConceptAttemptsRef.current.has(conceptName) && !force) {
+                return conceptAttempts[conceptName] || null;
+            }
+            if (inFlightAttemptsRef.current.has(conceptName)) {
+                return conceptAttempts[conceptName] || null; // avoid piling concurrent calls
+            }
+            if (fetchedOnceRef.current.has(conceptName) && !force) {
+                return conceptAttempts[conceptName] || null; // already fetched; no auto-refresh loop
+            }
+            inFlightAttemptsRef.current.add(conceptName);
+            setConceptAttemptsLoading(true);
+            try {
+                const params = new URLSearchParams({ limit, offset });
+                const data = await apiFetch(
+                    `/api/v1/learning/concepts/${encodeURIComponent(
+                        conceptName
+                    )}/attempts?${params}`
+                );
+                setConceptAttempts((prev) => ({
+                    ...prev,
+                    [conceptName]: data,
+                }));
+                fetchedOnceRef.current.add(conceptName);
+                return data;
+            } catch (e) {
+                if (e instanceof ApiError && e.status === 404) {
+                    try {
+                        const qParams = new URLSearchParams({
+                            concept: conceptName,
+                            limit: String(limit),
+                            offset: String(offset),
+                            autoEnsure: "1",
+                        });
+                        const fallback = await apiFetch(
+                            `/api/v1/learning/concept-attempts?${qParams}`
+                        );
+                        setConceptAttempts((prev) => ({
+                            ...prev,
+                            [conceptName]: fallback,
+                        }));
+                        fetchedOnceRef.current.add(conceptName);
+                        return fallback;
+                    } catch {
+                        failedConceptAttemptsRef.current.add(conceptName);
+                    }
+                }
+                const msg =
+                    e instanceof ApiError
+                        ? e.message
+                        : "Failed to load concept attempts";
+                toast.error(msg);
+                throw e;
+            } finally {
+                inFlightAttemptsRef.current.delete(conceptName);
+                setConceptAttemptsLoading(false);
+            }
+        },
+        [toast, conceptAttempts, failedConceptAttemptsRef]
+    );
 
     const fetchDueReviews = useCallback(async () => {
         try {
@@ -299,6 +368,29 @@ export function LearningProvider({ children }) {
         }
     }, [toast]);
 
+    // Ensure at least one attempt exists (seed) for a concept
+    const ensureConceptAttempt = useCallback(
+        async (conceptName) => {
+            try {
+                const data = await apiFetch(
+                    `/api/v1/learning/concepts/${encodeURIComponent(
+                        conceptName
+                    )}/attempts/ensure`,
+                    { method: "POST" }
+                );
+                return data;
+            } catch (e) {
+                const msg =
+                    e instanceof ApiError
+                        ? e.message
+                        : "Failed to ensure concept attempt";
+                toast.error(msg);
+                throw e;
+            }
+        },
+        [toast]
+    );
+
     // ==================== Utility Functions ====================
 
     const refreshDashboard = useCallback(async () => {
@@ -328,14 +420,17 @@ export function LearningProvider({ children }) {
         recommendations,
         sessionHistory,
         conceptDetails,
+        conceptAttempts,
         currentSession,
         loading,
         conceptsLoading,
+        conceptAttemptsLoading,
 
         // Actions
         fetchDashboard,
         fetchConcepts,
         fetchConceptDetails,
+        fetchConceptAttempts,
         fetchWeakConcepts,
         fetchDueReviews,
         fetchProgressChart,
@@ -345,6 +440,7 @@ export function LearningProvider({ children }) {
         fetchSessionHistory,
         fetchAchievements,
         fetchRecommendations,
+        ensureConceptAttempt,
         refreshDashboard,
 
         // Setters

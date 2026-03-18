@@ -17,6 +17,7 @@ import { LearningDashboardPage } from "./pages/LearningDashboardPage";
 import { PracticeSessionCreatePage } from "./pages/PracticeSessionCreatePage";
 import { AchievementsPage } from "./pages/AchievementsPage";
 import { SessionResultsPage } from "./pages/SessionResultsPage";
+import { ConceptDetailPage } from "./pages/ConceptDetailPage";
 import { useAuth } from "./contexts/AuthContext";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
@@ -144,6 +145,14 @@ export default function App() {
                         element={
                             <PrivateRoute>
                                 <SessionResultsPage />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/learning/concepts/:name"
+                        element={
+                            <PrivateRoute>
+                                <ConceptDetailPage />
                             </PrivateRoute>
                         }
                     />

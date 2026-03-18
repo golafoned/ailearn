@@ -133,6 +133,37 @@ async function verifyCompleteSeed() {
         });
     }
 
+    // 12. Attempts per Concept (sample for Enzyme Function)
+    console.log("\n\n🔗 ATTEMPTS FOR CONCEPT: Enzyme Function");
+    console.log("=".repeat(60));
+    const conceptAttempts = db.exec(`SELECT 
+            ta.id as attempt_id,
+            t.code as test_code,
+            t.title as test_title,
+            ta.score,
+            ta.submitted_at,
+            COUNT(taa.id) as answered_count,
+            SUM(CASE WHEN taa.is_correct=1 THEN 1 ELSE 0 END) as correct_count
+        FROM test_attempts ta
+        INNER JOIN tests t ON t.id=ta.test_id
+        LEFT JOIN test_attempt_answers taa ON taa.attempt_id=ta.id
+        WHERE ta.user_id='${userId}'
+          AND ta.submitted_at IS NOT NULL
+          AND t.concepts_json LIKE '%"Enzyme Function"%'
+        GROUP BY ta.id, t.code, t.title, ta.score, ta.submitted_at
+        ORDER BY ta.submitted_at DESC;`);
+    if (conceptAttempts[0]) {
+        conceptAttempts[0].values.forEach((row) => {
+            const accuracy =
+                row[5] > 0 ? Math.round((row[6] / row[5]) * 100) : 0;
+            console.log(
+                `  Attempt ${row[0]} - ${row[1]} (${row[2]}): Score ${row[3]}%, Accuracy ${accuracy}%`
+            );
+        });
+    } else {
+        console.log("  No attempts found for this concept.");
+    }
+
     console.log("\n\n" + "=".repeat(60));
     console.log("✨ COMPLETE SEED VERIFICATION SUCCESSFUL!");
     console.log("=".repeat(60));

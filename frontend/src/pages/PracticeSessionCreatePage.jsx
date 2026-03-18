@@ -23,6 +23,7 @@ export function PracticeSessionCreatePage() {
     const [difficulty, setDifficulty] = useState("adaptive");
     const [questionCount, setQuestionCount] = useState(10);
     const [creating, setCreating] = useState(false);
+    const [error, setError] = useState(null);
     const [showConceptPicker, setShowConceptPicker] = useState(false);
 
     useEffect(() => {
@@ -34,6 +35,7 @@ export function PracticeSessionCreatePage() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setCreating(true);
+        setError(null);
         try {
             const session = await createSession({
                 sessionType,
@@ -52,6 +54,16 @@ export function PracticeSessionCreatePage() {
             });
         } catch (e) {
             console.error("Failed to create session:", e);
+            if (
+                e?.code === "NO_CONCEPTS_AVAILABLE" ||
+                e?.message?.includes("No concepts available")
+            ) {
+                setError(
+                    "No concepts are currently eligible. Try switching to Weak or Random, or complete a test first to populate concepts."
+                );
+            } else {
+                setError("Failed to create session. Please try again.");
+            }
         } finally {
             setCreating(false);
         }
@@ -108,6 +120,11 @@ export function PracticeSessionCreatePage() {
                 </h1>
             </div>
 
+            {error && (
+                <div className="mb-4 p-3 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 text-sm">
+                    {error}
+                </div>
+            )}
             <form
                 onSubmit={handleSubmit}
                 className="bg-white rounded-xl border border-gray-200 shadow-sm p-8 space-y-6"

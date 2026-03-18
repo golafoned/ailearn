@@ -7,6 +7,7 @@ import {
     ConceptRelationshipRepository,
 } from "../repositories/achievementConceptRepositories.js";
 import { TestRepository } from "../repositories/testRepository.js";
+import { TestAttemptRepository } from "../repositories/testAttemptRepository.js";
 import { MasteryCalculationService } from "../services/masteryCalculationService.js";
 import { AdaptiveQuestionService } from "../services/adaptiveQuestionService.js";
 import { RecommendationService } from "../services/recommendationService.js";
@@ -22,12 +23,87 @@ const sessionRepo = new PracticeSessionRepository();
 const achievementRepo = new UserAchievementRepository();
 const conceptRelRepo = new ConceptRelationshipRepository();
 const testRepo = new TestRepository();
+const testAttemptRepo = new TestAttemptRepository();
 
 const masteryService = new MasteryCalculationService();
 const adaptiveService = new AdaptiveQuestionService();
 const recommendationService = new RecommendationService();
 const achievementService = new AchievementService(achievementRepo);
 const conceptService = new ConceptExtractionService();
+
+// Helper: ensure concept row exists; if missing create with baseline values.
+async function _ensureConcept(userId, conceptName) {
+    let concept = await userConceptRepo.findByUserAndConcept(
+        userId,
+        conceptName
+    );
+    if (!concept) {
+        concept = await userConceptRepo.create({
+            id: uuid(),
+            user_id: userId,
+            concept_name: conceptName,
+            mastery_level: 0,
+            total_attempts: 0,
+            correct_attempts: 0,
+            last_practiced_at: null,
+            next_review_due: null,
+            difficulty_level: "easy",
+            consecutive_correct: 0,
+            consecutive_wrong: 0,
+        });
+        logger.info({ userId, concept: conceptName }, "Concept auto-created");
+    }
+    return concept;
+}
+
+// Helper: seed one attempt for concept if none exist
+async function _seedAttemptIfNone(userId, conceptName) {
+    const existing = await testAttemptRepo.listByConcept(userId, conceptName, {
+        includeInProgress: true,
+    });
+    if (existing.length) return existing;
+    const questionId = uuid();
+    const question = {
+        id: questionId,
+        text: `Intro check: ${conceptName}?`,
+        choices: ["Yes", "No"],
+        answer: "Yes",
+        difficulty: "easy",
+        conceptTags: [conceptName],
+    };
+    const testId = uuid();
+    const code = generateCode();
+    await testRepo.create({
+        id: testId,
+        code,
+        title: `Seed Attempt: ${conceptName}`,
+        source_filename: null,
+        source_text: `Auto-generated seed test for concept ${conceptName}`,
+        model: "adaptive",
+        params_json: { concepts: [conceptName], seed: true },
+        questions_json: [question],
+        expires_at: new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString(),
+        time_limit_seconds: 300,
+        created_by: userId,
+        is_review: 0,
+        concepts_json: [conceptName],
+        adaptive_mode: 1,
+    });
+    const attemptId = uuid();
+    await testAttemptRepo.create({
+        id: attemptId,
+        test_id: testId,
+        user_id: userId,
+        participant_name: "You",
+    });
+    logger.info(
+        { userId, concept: conceptName, attemptId },
+        "Seed attempt created"
+    );
+    return testAttemptRepo.listByConcept(userId, conceptName, {
+        includeInProgress: true,
+    });
+}
 
 // GET /api/v1/learning/dashboard
 export async function getDashboard(req, res, next) {
@@ -230,10 +306,27 @@ export async function createSession(req, res, next) {
         }
 
         if (selectedConcepts.length === 0) {
-            throw ApiError.badRequest(
-                "No concepts available for practice",
-                "NO_CONCEPTS_AVAILABLE"
-            );
+            // Fallback chain: if 'due' empty try weak, then random.
+            if (conceptSelection === "due") {
+                const weak = await userConceptRepo.getWeakConcepts(userId, 5);
+                if (weak.length) selectedConcepts = weak;
+            }
+            if (selectedConcepts.length === 0) {
+                const all = await userConceptRepo.findByUser(userId, {
+                    limit: 50,
+                });
+                if (all.length) {
+                    selectedConcepts = all
+                        .sort(() => Math.random() - 0.5)
+                        .slice(0, 5);
+                }
+            }
+            if (selectedConcepts.length === 0) {
+                throw ApiError.badRequest(
+                    "NO_CONCEPTS_AVAILABLE",
+                    "No concepts available for practice. Start by completing any test or adaptive session to establish baseline concepts."
+                );
+            }
         }
 
         // Build mastery map
@@ -525,14 +618,7 @@ export async function getConceptDetails(req, res, next) {
     try {
         const userId = req.user.id;
         const { name } = req.params;
-
-        const concept = await userConceptRepo.findByUserAndConcept(
-            userId,
-            name
-        );
-        if (!concept) {
-            throw ApiError.notFound("Concept not found", "CONCEPT_NOT_FOUND");
-        }
+        const concept = await _ensureConcept(userId, name);
 
         const history = await historyRepo.findByUserAndConcept(
             userId,
@@ -540,6 +626,9 @@ export async function getConceptDetails(req, res, next) {
             50
         );
         const prerequisites = await conceptRelRepo.findPrerequisites(name);
+        const attempts = await testAttemptRepo.listByConcept(userId, name, {
+            includeInProgress: true,
+        });
 
         // Calculate trend
         const recentHistory = history.slice(0, 10).reverse();
@@ -568,6 +657,228 @@ export async function getConceptDetails(req, res, next) {
             history: chartData,
             prerequisites: prerequisites.map((p) => p.prerequisite_name),
             relatedConcepts: [],
+            attempts: attempts.map((a) => ({
+                attemptId: a.attempt_id,
+                testId: a.test_id,
+                testCode: a.test_code,
+                testTitle: a.test_title,
+                status: a.status,
+                score: a.score,
+                submittedAt: a.submitted_at,
+                startedAt: a.started_at,
+                answered: a.answered_count,
+                correct: a.correct_count,
+                accuracy:
+                    a.answered_count > 0
+                        ? Math.round((a.correct_count / a.answered_count) * 100)
+                        : null,
+                attemptLink:
+                    a.status === "completed"
+                        ? `/api/v1/tests/attempts/${a.attempt_id}/results`
+                        : null,
+                testLink: `/api/v1/tests/${a.test_code}`,
+            })),
+        });
+    } catch (e) {
+        next(e);
+    }
+}
+
+// GET /api/v1/learning/concepts/:name/attempts
+export async function getConceptAttempts(req, res, next) {
+    try {
+        const userId = req.user.id;
+        const { name } = req.params;
+        const { limit = 25, offset = 0 } = req.query;
+        logger.info({ userId, concept: name }, "getConceptAttempts hit");
+        await _ensureConcept(userId, name);
+        let attempts = await testAttemptRepo.listByConcept(userId, name, {
+            includeInProgress: true,
+        });
+        if (!attempts.length) {
+            attempts = await _seedAttemptIfNone(userId, name);
+        }
+        const sliced = attempts.slice(
+            parseInt(offset),
+            parseInt(offset) + parseInt(limit)
+        );
+
+        res.json({
+            concept: name,
+            total: attempts.length,
+            limit: parseInt(limit),
+            offset: parseInt(offset),
+            attempts: sliced.map((a) => ({
+                attemptId: a.attempt_id,
+                testId: a.test_id,
+                testCode: a.test_code,
+                testTitle: a.test_title,
+                status: a.status,
+                score: a.score,
+                submittedAt: a.submitted_at,
+                startedAt: a.started_at,
+                answered: a.answered_count,
+                correct: a.correct_count,
+                accuracy:
+                    a.answered_count > 0
+                        ? Math.round((a.correct_count / a.answered_count) * 100)
+                        : null,
+                attemptLink:
+                    a.status === "completed"
+                        ? `/api/v1/tests/attempts/${a.attempt_id}/results`
+                        : null,
+                testLink: `/api/v1/tests/${a.test_code}`,
+            })),
+        });
+    } catch (e) {
+        next(e);
+    }
+}
+
+// POST /api/v1/learning/concepts/:name/attempts/ensure
+// Creates a minimal adaptive test + attempt for the concept if user has none.
+export async function ensureConceptAttempt(req, res, next) {
+    try {
+        const userId = req.user.id;
+        const { name } = req.params;
+        logger.info({ userId, concept: name }, "ensureConceptAttempt hit");
+        await _ensureConcept(userId, name);
+        const existing = await testAttemptRepo.listByConcept(userId, name, {
+            includeInProgress: true,
+        });
+        if (existing.length) {
+            return res.json({
+                created: false,
+                attemptId: existing[0].attempt_id,
+            });
+        }
+        const seeded = await _seedAttemptIfNone(userId, name);
+        return res.status(201).json({
+            created: true,
+            attemptId: seeded[0].attempt_id,
+            testId: seeded[0].test_id,
+            code: seeded[0].test_code,
+        });
+    } catch (e) {
+        next(e);
+    }
+}
+
+// GET /api/v1/learning/concept-attempts?concept=Name&limit=25&offset=0&autoEnsure=1
+export async function queryConceptAttempts(req, res, next) {
+    try {
+        const userId = req.user.id;
+        const {
+            concept: conceptName,
+            limit = 25,
+            offset = 0,
+            autoEnsure,
+        } = req.query;
+        logger.info(
+            { userId, concept: conceptName, autoEnsure },
+            "queryConceptAttempts hit"
+        );
+        if (!conceptName) {
+            return res.status(400).json({
+                error: {
+                    code: "MISSING_CONCEPT",
+                    message: "concept query parameter required",
+                },
+            });
+        }
+        const concept = await userConceptRepo.findByUserAndConcept(
+            userId,
+            conceptName
+        );
+        if (!concept) {
+            // return empty instead of 404 so frontend can treat as no data
+            return res.json({
+                concept: conceptName,
+                total: 0,
+                limit: parseInt(limit),
+                offset: parseInt(offset),
+                attempts: [],
+            });
+        }
+        let attempts = await testAttemptRepo.listByConcept(
+            userId,
+            conceptName,
+            { includeInProgress: true }
+        );
+        if (!attempts.length && String(autoEnsure) === "1") {
+            // Attempt auto seed
+            const questionId = uuid();
+            const question = {
+                id: questionId,
+                text: `Quick check: recall for ${conceptName}?`,
+                choices: ["Yes", "No"],
+                answer: "Yes",
+                difficulty: "easy",
+                conceptTags: [conceptName],
+            };
+            const testId = uuid();
+            const code = generateCode();
+            await testRepo.create({
+                id: testId,
+                code,
+                title: `Seed Attempt: ${conceptName}`,
+                source_filename: null,
+                source_text: `Auto-generated seed test for concept ${conceptName}`,
+                model: "adaptive",
+                params_json: { concepts: [conceptName], seed: true },
+                questions_json: [question],
+                expires_at: new Date(
+                    Date.now() + 6 * 60 * 60 * 1000
+                ).toISOString(),
+                time_limit_seconds: 300,
+                created_by: userId,
+                is_review: 0,
+                concepts_json: [conceptName],
+                adaptive_mode: 1,
+            });
+            const attemptId = uuid();
+            await testAttemptRepo.create({
+                id: attemptId,
+                test_id: testId,
+                user_id: userId,
+                participant_name: "You",
+            });
+            attempts = await testAttemptRepo.listByConcept(
+                userId,
+                conceptName,
+                { includeInProgress: true }
+            );
+        }
+        const sliced = attempts.slice(
+            parseInt(offset),
+            parseInt(offset) + parseInt(limit)
+        );
+        res.json({
+            concept: conceptName,
+            total: attempts.length,
+            limit: parseInt(limit),
+            offset: parseInt(offset),
+            attempts: sliced.map((a) => ({
+                attemptId: a.attempt_id,
+                testId: a.test_id,
+                testCode: a.test_code,
+                testTitle: a.test_title,
+                status: a.status,
+                score: a.score,
+                submittedAt: a.submitted_at,
+                startedAt: a.started_at,
+                answered: a.answered_count,
+                correct: a.correct_count,
+                accuracy:
+                    a.answered_count > 0
+                        ? Math.round((a.correct_count / a.answered_count) * 100)
+                        : null,
+                attemptLink:
+                    a.status === "completed"
+                        ? `/api/v1/tests/attempts/${a.attempt_id}/results`
+                        : null,
+                testLink: `/api/v1/tests/${a.test_code}`,
+            })),
         });
     } catch (e) {
         next(e);

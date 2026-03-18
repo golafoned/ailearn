@@ -16,7 +16,6 @@ export function LearningDashboardPage() {
         concepts,
         weakConcepts,
         dueReviews,
-        recommendations,
         loading,
         conceptsLoading,
         fetchConcepts,
@@ -224,128 +223,25 @@ export function LearningDashboardPage() {
                                         </div>
                                     ))}
                             </div>
-                            <button
-                                onClick={() => {
-                                    navigate("/learning/practice/create", {
-                                        state: { conceptSelection: "weak" },
-                                    });
-                                }}
-                                className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
-                            >
-                                Start Focused Practice
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Due Reviews Widget */}
-            {dueData.dueCount > 0 && (
-                <div className="bg-gradient-to-r from-yellow-50 to-amber-50 border-2 border-yellow-200 rounded-xl p-6 mb-8">
-                    <div className="flex items-start gap-3">
-                        <span className="text-3xl">⏰</span>
-                        <div className="flex-1">
-                            <h2 className="text-xl font-bold text-gray-900 mb-2">
-                                Due for Review
-                            </h2>
-                            <p className="text-sm text-gray-600 mb-4">
-                                {dueData.dueCount} concepts are ready for spaced
-                                repetition review
-                            </p>
                             <div className="flex gap-3">
                                 <button
                                     onClick={() => {
                                         navigate("/learning/practice/create", {
-                                            state: { conceptSelection: "due" },
+                                            state: { conceptSelection: "weak" },
                                         });
                                     }}
-                                    className="px-6 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors font-medium"
+                                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
                                 >
-                                    Practice All
+                                    Focused Practice
                                 </button>
                                 <button
-                                    onClick={() => setConceptFilter("due")}
-                                    className="px-6 py-2 bg-white border border-yellow-300 text-yellow-700 rounded-lg hover:bg-yellow-50 transition-colors font-medium"
+                                    onClick={() => setConceptFilter("weak")}
+                                    className="flex-1 px-4 py-2 bg-white border border-red-300 text-red-700 rounded-lg hover:bg-red-50 transition-colors font-medium"
                                 >
-                                    Select Concepts
+                                    View Weak
                                 </button>
                             </div>
                         </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Recommendations */}
-            {recommendations && recommendations.length > 0 && (
-                <div className="bg-white border border-gray-200 rounded-xl p-6 mb-8">
-                    <h2 className="text-xl font-bold text-gray-900 mb-4">
-                        💡 Recommended for You
-                    </h2>
-                    <div className="space-y-3">
-                        {recommendations.slice(0, 3).map((rec, idx) => (
-                            <div
-                                key={idx}
-                                className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow"
-                            >
-                                <div className="flex items-start justify-between">
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <span
-                                                className={`text-xs font-bold px-2 py-1 rounded ${
-                                                    rec.priority === "high"
-                                                        ? "bg-red-100 text-red-700"
-                                                        : rec.priority ===
-                                                          "medium"
-                                                        ? "bg-yellow-100 text-yellow-700"
-                                                        : "bg-blue-100 text-blue-700"
-                                                }`}
-                                            >
-                                                {rec.priority?.toUpperCase()}
-                                            </span>
-                                            <h3 className="font-semibold text-gray-900">
-                                                {rec.title}
-                                            </h3>
-                                        </div>
-                                        <p className="text-sm text-gray-600">
-                                            {rec.description}
-                                        </p>
-                                    </div>
-                                    <button
-                                        onClick={() => {
-                                            if (
-                                                rec.action === "start_practice"
-                                            ) {
-                                                handlePracticeConcept(
-                                                    rec.concept
-                                                );
-                                            } else if (
-                                                rec.action === "quick_review"
-                                            ) {
-                                                navigate(
-                                                    "/learning/practice/create",
-                                                    {
-                                                        state: {
-                                                            customConcepts: [
-                                                                rec.concept,
-                                                            ],
-                                                            sessionType:
-                                                                "quick",
-                                                        },
-                                                    }
-                                                );
-                                            }
-                                        }}
-                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium whitespace-nowrap ml-4"
-                                    >
-                                        {rec.action === "start_practice"
-                                            ? "Practice"
-                                            : rec.action === "quick_review"
-                                            ? "Review"
-                                            : "Explore"}
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
                     </div>
                 </div>
             )}

@@ -438,70 +438,105 @@ export function DashboardPage() {
                         </div>
                     ) : (
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                            {reviewTests.map((test) => (
-                                <div
-                                    key={test.id}
-                                    className="border-2 border-purple-200 rounded-xl p-5 bg-gradient-to-br from-purple-50 to-indigo-50 hover:shadow-lg transition-all cursor-pointer"
-                                    onClick={() =>
-                                        navigate(`/review-tests/${test.code}`)
-                                    }
-                                >
-                                    <div className="flex items-start justify-between mb-3">
-                                        <span className="px-3 py-1 bg-purple-600 text-white text-xs font-bold rounded-full">
-                                            REVIEW
-                                        </span>
-                                        <span className="text-xs text-gray-500 font-mono">
-                                            {test.code}
-                                        </span>
-                                    </div>
-
-                                    <div className="space-y-2 text-sm mb-4">
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-600">
-                                                Strategy:
-                                            </span>
-                                            <span className="font-medium capitalize">
-                                                {test.strategy?.replace(
-                                                    /_/g,
-                                                    " "
-                                                ) || "N/A"}
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-600">
-                                                Questions:
-                                            </span>
-                                            <span className="font-bold text-purple-700">
-                                                {test.questionCount || "—"}
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-600">
-                                                Created:
-                                            </span>
-                                            <span className="text-xs">
-                                                {test.createdAt
-                                                    ? new Date(
-                                                          test.createdAt
-                                                      ).toLocaleDateString()
-                                                    : "—"}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    <button
-                                        className="w-full px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all font-medium shadow-md"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
+                            {reviewTests.map((test) => {
+                                // Attempt to derive a numeric priority if API includes one (e.g., test.priority)
+                                const level =
+                                    test.priority ||
+                                    test.recommendationPriority ||
+                                    0; // fallback 0
+                                let badgeClass = "";
+                                let containerClass = "";
+                                let label = "";
+                                if (level >= 3) {
+                                    badgeClass = "bg-red-600 text-white";
+                                    containerClass =
+                                        "border-red-200 from-red-50 to-rose-50";
+                                    label = "HIGH";
+                                } else if (level === 2) {
+                                    badgeClass = "bg-amber-500 text-white";
+                                    containerClass =
+                                        "border-amber-200 from-amber-50 to-yellow-50";
+                                    label = "MED";
+                                } else {
+                                    badgeClass = "bg-emerald-600 text-white";
+                                    containerClass =
+                                        "border-emerald-200 from-emerald-50 to-green-50";
+                                    label = "LOW";
+                                }
+                                return (
+                                    <div
+                                        key={test.id}
+                                        className={`border-2 rounded-xl p-5 bg-gradient-to-br hover:shadow-lg transition-all cursor-pointer ${containerClass}`}
+                                        onClick={() =>
                                             navigate(
                                                 `/review-tests/${test.code}`
-                                            );
-                                        }}
+                                            )
+                                        }
                                     >
-                                        Start Review
-                                    </button>
-                                </div>
-                            ))}
+                                        <div className="flex items-start justify-between mb-3">
+                                            <div className="flex items-center gap-2">
+                                                <span
+                                                    className={`px-2 py-0.5 text-[10px] font-bold rounded-md tracking-wide ${badgeClass}`}
+                                                >
+                                                    {label}
+                                                </span>
+                                                <span className="px-2 py-0.5 bg-purple-600 text-white text-[10px] font-bold rounded-md">
+                                                    REVIEW
+                                                </span>
+                                            </div>
+                                            <span className="text-xs text-gray-500 font-mono">
+                                                {test.code}
+                                            </span>
+                                        </div>
+
+                                        <div className="space-y-2 text-sm mb-4">
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-600">
+                                                    Strategy:
+                                                </span>
+                                                <span className="font-medium capitalize">
+                                                    {test.strategy?.replace(
+                                                        /_/g,
+                                                        " "
+                                                    ) || "N/A"}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-600">
+                                                    Questions:
+                                                </span>
+                                                <span className="font-bold text-purple-700">
+                                                    {test.questionCount || "—"}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-600">
+                                                    Created:
+                                                </span>
+                                                <span className="text-xs">
+                                                    {test.createdAt
+                                                        ? new Date(
+                                                              test.createdAt
+                                                          ).toLocaleDateString()
+                                                        : "—"}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            className="w-full px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all font-medium shadow-md"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                navigate(
+                                                    `/review-tests/${test.code}`
+                                                );
+                                            }}
+                                        >
+                                            Start Review
+                                        </button>
+                                    </div>
+                                );
+                            })}
                         </div>
                     )}
                 </div>
