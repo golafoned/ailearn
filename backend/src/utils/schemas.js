@@ -28,21 +28,27 @@ export const refreshSchema = z.object({
 });
 
 export const generateTestSchema = z.object({
-    body: z.object({
-        title: z.string().min(3),
-        questionCount: z.number().int().min(1).max(50),
-        difficulty: z.enum(["easy", "medium", "hard"]).default("medium"),
-        timeLimitSeconds: z.number().int().min(30).max(7200),
-        expiresInMinutes: z
-            .number()
-            .int()
-            .min(5)
-            .max(60 * 24 * 30),
-        extraInstructions: z.string().max(2000).optional(),
-        sourceText: z.string().min(10),
-        filename: z.string().optional(),
-        params: z.record(z.any()).optional(),
-    }),
+    body: z
+        .object({
+            title: z.string().min(1),
+            questionCount: z.number().int().min(1).max(50),
+            difficulty: z.enum(["easy", "medium", "hard"]).default("medium"),
+            timeLimitSeconds: z.number().int().min(30).max(7200),
+            expiresInMinutes: z
+                .number()
+                .int()
+                .min(5)
+                .max(60 * 24 * 30),
+            extraInstructions: z.string().max(2000).optional(),
+            sourceText: z.string().min(10).optional(),
+            topic: z.string().min(2).max(500).optional(),
+            filename: z.string().optional(),
+            params: z.record(z.any()).optional(),
+        })
+        .refine((data) => data.sourceText || data.topic, {
+            message: "Either sourceText or topic is required",
+            path: ["sourceText"],
+        }),
     query: z.object({}).passthrough(),
     params: z.object({}).passthrough(),
 });
@@ -74,28 +80,23 @@ export const submitAttemptSchema = z.object({
 });
 
 export const reviewGenerateSchema = z.object({
-    body: z
-        .object({
-            strategy: z
-                .enum(["wrong_recent", "spaced_repetition", "mix"])
-                .default("wrong_recent"),
-            baseTestId: z.string().uuid().optional(),
-            // attemptId in existing data may not be a RFC4122 uuid (e.g., 'attempt-002'); allow relaxed pattern while still validating basic structure
-            attemptId: z
-                .string()
-                .regex(/^[a-zA-Z0-9_-]{6,}$/i, {
-                    message: "Invalid attemptId format",
-                })
-                .optional(),
-            questionCount: z.number().int().min(1).max(40).default(8),
-            variantMode: z
-                .enum(["variant", "exact", "adaptive"])
-                .default("variant"),
-        })
-        .refine((data) => data.attemptId || data.baseTestId, {
-            message: "Either attemptId or baseTestId required",
-            path: ["attemptId"],
-        }),
+    body: z.object({
+        strategy: z
+            .enum(["wrong_recent", "spaced_repetition", "mix", "topic"])
+            .default("wrong_recent"),
+        baseTestId: z.string().uuid().optional(),
+        attemptId: z
+            .string()
+            .regex(/^[a-zA-Z0-9_-]{6,}$/i, {
+                message: "Invalid attemptId format",
+            })
+            .optional(),
+        topic: z.string().min(2).max(500).optional(),
+        questionCount: z.number().int().min(1).max(40).default(8),
+        variantMode: z
+            .enum(["variant", "exact", "adaptive"])
+            .default("variant"),
+    }),
     query: z.object({}).passthrough(),
     params: z.object({}).passthrough(),
 });
@@ -118,9 +119,10 @@ export const sessionCreateSchema = z.object({
             "weak_concepts",
         ]),
         conceptSelection: z
-            .enum(["due", "weak", "random", "custom"])
+            .enum(["due", "weak", "random", "custom", "topic"])
             .default("due"),
         customConcepts: z.array(z.string()).optional(),
+        topic: z.string().min(2).max(500).optional(),
         targetDifficulty: z
             .enum(["easy", "medium", "hard", "adaptive"])
             .default("adaptive"),

@@ -1,22 +1,30 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "../components/Button";
 import { IconUpload, IconArrowRight } from "../components/Icons";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { apiFetch, ApiError } from "../utils/apiClient";
 import { useTestData } from "../contexts/TestDataContext";
 
 export function CreateTestPage() {
-    const [step, setStep] = useState(1);
+    const location = useLocation();
+    
+    // Core inputs
+    const [sourceMode, setSourceMode] = useState("topic"); // "topic" or "file"
+    const [topic, setTopic] = useState(location.state?.topic || "");
     const [fileName, setFileName] = useState("");
     const [fileObj, setFileObj] = useState(null);
+    
+    // Params
+    const [title, setTitle] = useState("");
+    const [questions, setQuestions] = useState(10);
+    const [timeLimit, setTimeLimit] = useState(15); // minutes
+    const [difficulty, setDifficulty] = useState("medium");
+    const [instructions, setInstructions] = useState("");
+    const [expiresInMinutes, setExpiresInMinutes] = useState(60 * 24 * 7); // 7 days
+
+    // State
     const [isGenerating, setIsGenerating] = useState(false);
     const [error, setError] = useState(null);
-    const [questions, setQuestions] = useState(20);
-    const [timeLimit, setTimeLimit] = useState(30); // minutes
-    const [difficulty, setDifficulty] = useState("easy");
-    const [title, setTitle] = useState("");
-    const [instructions, setInstructions] = useState("");
-    const [expiresInMinutes, setExpiresInMinutes] = useState(60);
     const navigate = useNavigate();
     const { setPreviewTest, setLastGeneratedCode, addLocalGeneratedTest } =
         useTestData();
@@ -42,7 +50,6 @@ export function CreateTestPage() {
                 if (p.questions) setQuestions(p.questions);
                 if (p.timeLimit) setTimeLimit(p.timeLimit);
                 if (p.difficulty) setDifficulty(p.difficulty);
-                if (p.title) setTitle(p.title);
                 if (p.instructions) setInstructions(p.instructions);
                 if (p.expiresInMinutes) setExpiresInMinutes(p.expiresInMinutes);
             }
@@ -57,7 +64,6 @@ export function CreateTestPage() {
             questions,
             timeLimit,
             difficulty,
-            title,
             instructions,
             expiresInMinutes,
         };
@@ -70,19 +76,16 @@ export function CreateTestPage() {
         questions,
         timeLimit,
         difficulty,
-        title,
         instructions,
         expiresInMinutes,
     ]);
 
     const readTextFile = async (file) => {
         if (!file) return "";
-        // Only handling .txt now per requirement
         if (!/\.txt$/i.test(file.name)) {
             throw new Error("Only .txt files are supported at this time.");
         }
         const raw = await file.text();
-        // Basic normalization: collapse excessive whitespace
         return raw
             .replace(/\r\n?/g, "\n")
             .replace(/\n{3,}/g, "\n\n")
@@ -107,7 +110,6 @@ export function CreateTestPage() {
                     return data;
                 }
             } catch (err) {
-                // If 404 continue polling; other errors escalate
                 if (!(err instanceof ApiError && err.status === 404)) {
                     throw err;
                 }
@@ -122,29 +124,38 @@ export function CreateTestPage() {
         setError(null);
         abortRef.current = new AbortController();
         try {
-            const sourceText = await readTextFile(fileObj);
-            if (!sourceText) throw new Error("File is empty or unreadable.");
+            let finalSourceText = "";
+            let generatedTitle = title;
+            
+            if (sourceMode === "file") {
+                if (!fileObj) throw new Error("Please upload a file first.");
+                finalSourceText = await readTextFile(fileObj);
+                if (!finalSourceText) throw new Error("File is empty or unreadable.");
+                if (!generatedTitle) generatedTitle = fileName.replace(/\.[^.]+$/, "");
+            } else {
+                if (!topic.trim()) throw new Error("Please enter a topic to test.");
+                if (!generatedTitle) generatedTitle = `Test: ${topic.slice(0, 50)}`;
+            }
+
             const payload = {
-                title: (
-                    title ||
-                    fileName.replace(/\.[^.]+$/, "") ||
-                    "Untitled Test"
-                ).slice(0, 120),
+                title: (generatedTitle || "Untitled Test").slice(0, 120),
                 questionCount: questions,
                 difficulty,
                 timeLimitSeconds: timeLimit * 60,
                 expiresInMinutes: Number(expiresInMinutes) || 60,
-                sourceText,
+                sourceText: sourceMode === "file" ? finalSourceText : undefined,
+                topic: sourceMode === "topic" ? topic.trim() : undefined,
                 extraInstructions: instructions.trim() || undefined,
             };
+
             const genResp = await apiFetch("/api/v1/tests/generate", {
                 method: "POST",
                 body: payload,
             });
             if (!genResp || !genResp.code)
                 throw new Error("Generation response missing test code.");
+            
             setLastGeneratedCode(genResp.code);
-            // optimistic local list entry (minimal fields until poll resolves)
             addLocalGeneratedTest({
                 id: genResp.id,
                 code: genResp.code,
@@ -152,7 +163,7 @@ export function CreateTestPage() {
                 createdAt: new Date().toISOString(),
                 expiresAt: genResp.expiresAt,
             });
-            // Poll endpoint for fully generated questions
+            
             const full = await pollForQuestions(genResp.code, {});
             setPreviewTest(full);
             navigate("/preview");
@@ -178,206 +189,230 @@ export function CreateTestPage() {
     };
 
     return (
-        <div className="max-w-2xl mx-auto px-4 py-24 sm:py-32">
-            <h1 className="text-3xl sm:text-4xl font-bold text-center mb-10 text-gray-900">
-                Create a New Test
-            </h1>
-            {step === 1 && (
-                <div className="bg-white rounded-xl p-8 border border-gray-200 text-center shadow-sm">
-                    <h2 className="text-2xl font-semibold mb-2">
-                        Step 1: Upload Source Material
-                    </h2>
-                    <p className="text-gray-500 mb-6">
-                        Upload a PDF, DOCX, or TXT file as a reference for the
-                        AI.
-                    </p>
-                    <label
-                        htmlFor="dropzone-file"
-                        className="flex flex-col items-center justify-center w-full h-64 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100"
+        <div className="max-w-3xl mx-auto px-4 py-24 sm:py-32">
+            <div className="flex items-center gap-3 mb-8">
+                <button
+                    onClick={() => navigate(-1)}
+                    className="text-gray-500 hover:text-gray-700 transition"
+                    title="Go back"
+                >
+                    <span className="text-xl">←</span>
+                </button>
+                <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight">
+                    Generate Practice Test
+                </h1>
+            </div>
+
+            <div className="bg-white rounded-2xl p-6 md:p-8 border border-gray-200 shadow-sm space-y-8">
+                
+                {/* Source Selection Toggle */}
+                <div className="flex p-1 bg-gray-100 rounded-lg">
+                    <button
+                        onClick={() => setSourceMode("topic")}
+                        className={`flex-1 py-2.5 px-4 text-sm font-semibold rounded-md transition-all ${
+                            sourceMode === "topic"
+                                ? "bg-white text-blue-600 shadow border border-gray-200"
+                                : "text-gray-600 hover:text-gray-900"
+                        }`}
                     >
-                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                            <IconUpload />
-                            {fileName ? (
-                                <>
-                                    <p className="mb-2 text-sm text-green-600 font-semibold">
-                                        {fileName}
-                                    </p>
-                                    <p className="text-xs text-gray-500">
-                                        Click to change file
-                                    </p>
-                                </>
-                            ) : (
-                                <>
-                                    <p className="mb-2 text-sm text-gray-500">
-                                        <span className="font-semibold">
-                                            Click to upload
-                                        </span>{" "}
-                                        or drag and drop
-                                    </p>
-                                    <p className="text-xs text-gray-500">
-                                        PDF, DOCX, TXT (MAX. 10MB)
-                                    </p>
-                                </>
-                            )}
-                        </div>
-                        <input
-                            id="dropzone-file"
-                            type="file"
-                            accept=".txt"
-                            className="hidden"
-                            onChange={handleFileChange}
-                        />
-                    </label>
-                    <Button
-                        onClick={() => setStep(2)}
-                        disabled={!fileName}
-                        className="mt-8 w-full sm:w-auto"
+                        📝 By Topic
+                    </button>
+                    <button
+                        onClick={() => setSourceMode("file")}
+                        className={`flex-1 py-2.5 px-4 text-sm font-semibold rounded-md transition-all ${
+                            sourceMode === "file"
+                                ? "bg-white text-blue-600 shadow border border-gray-200"
+                                : "text-gray-600 hover:text-gray-900"
+                        }`}
                     >
-                        Next: Set Parameters <IconArrowRight />
-                    </Button>
+                        📄 Upload File
+                    </button>
                 </div>
-            )}
-            {step === 2 && (
-                <div className="bg-white rounded-xl p-8 border border-gray-200 shadow-sm">
-                    <h2 className="text-2xl font-semibold mb-6">
-                        Step 2: Configure Test Parameters
-                    </h2>
-                    <div className="space-y-6">
+
+                {/* Source Input */}
+                <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
+                    {sourceMode === "topic" ? (
                         <div>
-                            <label className="block mb-2 text-sm font-medium text-gray-700">
-                                Title
-                            </label>
-                            <input
-                                type="text"
-                                value={title}
-                                maxLength={120}
-                                onChange={(e) => setTitle(e.target.value)}
-                                placeholder="Enter test title"
-                                className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring"
-                            />
-                        </div>
-                        <div>
-                            <label className="block mb-2 text-sm font-medium text-gray-700">
-                                Additional Instructions (optional)
+                            <label className="block mb-2 text-sm font-medium text-gray-900">
+                                What do you want to test? *
                             </label>
                             <textarea
-                                value={instructions}
-                                onChange={(e) =>
-                                    setInstructions(e.target.value)
-                                }
-                                rows={4}
-                                placeholder="E.g., Emphasize definitions, avoid trick questions..."
-                                className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring"
+                                value={topic}
+                                onChange={(e) => setTopic(e.target.value)}
+                                placeholder="E.g., CSS Flexbox and Grid layout, Cell division in Biology, or The concept of OOP in Python..."
+                                rows={3}
+                                className="w-full border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-sm"
                             />
+                            <p className="text-xs text-gray-500 mt-2">
+                                Be as general or specific as you want. AI will generate questions based on this knowledge.
+                            </p>
                         </div>
+                    ) : (
                         <div>
+                            <label className="block mb-2 text-sm font-medium text-gray-900">
+                                Upload Reference Material *
+                            </label>
                             <label
-                                htmlFor="questions"
-                                className="block mb-2 text-sm font-medium text-gray-700"
+                                htmlFor="dropzone-file"
+                                className="flex flex-col items-center justify-center w-full h-48 border-2 border-blue-300 border-dashed rounded-lg cursor-pointer bg-blue-50 hover:bg-blue-100 transition-colors"
                             >
-                                Number of Questions
+                                <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                    <IconUpload className="text-blue-500 mb-3" />
+                                    {fileName ? (
+                                        <>
+                                            <p className="mb-2 text-sm text-blue-700 font-semibold text-center px-4">
+                                                {fileName}
+                                            </p>
+                                            <p className="text-xs text-blue-600">
+                                                Click to replace file
+                                            </p>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <p className="mb-2 text-sm text-blue-800">
+                                                <span className="font-semibold">
+                                                    Click to upload
+                                                </span>{" "}
+                                                or drag and drop
+                                            </p>
+                                            <p className="text-xs text-blue-600 font-medium">
+                                                TXT only (MAX. 10MB)
+                                            </p>
+                                        </>
+                                    )}
+                                </div>
+                                <input
+                                    id="dropzone-file"
+                                    type="file"
+                                    accept=".txt"
+                                    className="hidden"
+                                    onChange={handleFileChange}
+                                />
                             </label>
-                            <input
-                                id="questions"
-                                type="range"
-                                min="5"
-                                max="50"
-                                value={questions}
-                                onChange={(e) =>
-                                    setQuestions(Number(e.target.value))
-                                }
-                                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                            />
-                            <p className="text-sm text-gray-600 mt-1">
-                                {questions} questions
-                            </p>
                         </div>
-                        <div>
-                            <label
-                                htmlFor="time"
-                                className="block mb-2 text-sm font-medium text-gray-700"
-                            >
-                                Time Limit (minutes)
-                            </label>
-                            <input
-                                id="time"
-                                type="range"
-                                min="10"
-                                max="120"
-                                value={timeLimit}
-                                onChange={(e) =>
-                                    setTimeLimit(Number(e.target.value))
-                                }
-                                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                            />
-                            <p className="text-sm text-gray-600 mt-1">
-                                {timeLimit} minutes
-                            </p>
+                    )}
+                </div>
+
+                {/* Grid for Parameters */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-gray-100">
+                    <div>
+                        <label className="block mb-2 text-sm font-medium text-gray-700">
+                            Number of Questions: <span className="text-blue-600 font-bold">{questions}</span>
+                        </label>
+                        <input
+                            type="range"
+                            min="5"
+                            max="50"
+                            step="5"
+                            value={questions}
+                            onChange={(e) => setQuestions(Number(e.target.value))}
+                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                        />
+                        <div className="flex justify-between text-xs text-gray-500 mt-2 px-1">
+                            <span>5</span>
+                            <span>25</span>
+                            <span>50</span>
                         </div>
-                        <div>
-                            <label className="block mb-2 text-sm font-medium text-gray-700">
-                                Difficulty
-                            </label>
-                            <select
-                                value={difficulty}
-                                onChange={(e) => setDifficulty(e.target.value)}
-                                className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring"
-                            >
-                                <option value="easy">Easy</option>
-                                <option value="medium">Medium</option>
-                                <option value="hard">Hard</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block mb-2 text-sm font-medium text-gray-700">
-                                Expires In (minutes)
-                            </label>
-                            <input
-                                type="number"
-                                min={15}
-                                max={1440}
-                                value={expiresInMinutes}
-                                onChange={(e) =>
-                                    setExpiresInMinutes(e.target.value)
-                                }
-                                className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring"
-                            />
-                            <p className="text-xs text-gray-500 mt-1">
-                                After this time the test may no longer be
-                                accessible.
-                            </p>
-                        </div>
-                        {error && (
-                            <div className="text-sm text-red-600 mt-4">
-                                {error}
-                            </div>
-                        )}
                     </div>
-                    <div className="flex justify-between mt-8">
-                        <Button onClick={() => setStep(1)} variant="secondary">
-                            Back
-                        </Button>
-                        <div className="flex gap-3">
-                            {isGenerating && (
-                                <Button
-                                    variant="secondary"
-                                    onClick={handleAbort}
-                                >
-                                    Cancel
-                                </Button>
-                            )}
-                            <Button
-                                onClick={handleGenerate}
-                                disabled={isGenerating}
-                            >
-                                {isGenerating
-                                    ? "Generating..."
-                                    : "Preview Test"}
-                            </Button>
-                        </div>
+
+                    <div>
+                        <label className="block mb-2 text-sm font-medium text-gray-700">
+                            Difficulty Level
+                        </label>
+                        <select
+                            value={difficulty}
+                            onChange={(e) => setDifficulty(e.target.value)}
+                            className="w-full border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm"
+                        >
+                            <option value="easy">Easy (Fundamentals)</option>
+                            <option value="medium">Medium (Standard)</option>
+                            <option value="hard">Hard (Advanced)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label className="block mb-2 text-sm font-medium text-gray-700">
+                            Time Limit: <span className="text-blue-600 font-bold">{timeLimit} mins</span>
+                        </label>
+                        <input
+                            type="range"
+                            min="5"
+                            max="120"
+                            step="5"
+                            value={timeLimit}
+                            onChange={(e) => setTimeLimit(Number(e.target.value))}
+                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block mb-2 text-sm font-medium text-gray-700">
+                            Test Title (Optional)
+                        </label>
+                        <input
+                            type="text"
+                            value={title}
+                            maxLength={120}
+                            onChange={(e) => setTitle(e.target.value)}
+                            placeholder={sourceMode === "file" && fileName ? fileName.replace(/\.[^.]+$/, "") : "Leave blank to auto-generate"}
+                            className="w-full border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm"
+                        />
                     </div>
                 </div>
-            )}
+
+                {/* Optional Instructions */}
+                <div>
+                    <label className="block mb-2 text-sm font-medium text-gray-700">
+                        Special Instructions (Optional)
+                    </label>
+                    <input
+                        type="text"
+                        value={instructions}
+                        onChange={(e) => setInstructions(e.target.value)}
+                        placeholder="E.g., Give scenario-based questions, no true/false..."
+                        className="w-full border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm"
+                    />
+                </div>
+
+                {error && (
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 flex items-start">
+                        <span className="mr-2">⚠️</span>
+                        <span>{error}</span>
+                    </div>
+                )}
+
+                <div className="pt-6 flex justify-end gap-3 border-t border-gray-100">
+                    <Button
+                        variant="secondary"
+                        onClick={() => navigate(-1)}
+                        disabled={isGenerating}
+                    >
+                        Cancel
+                    </Button>
+                    
+                    {isGenerating ? (
+                        <div className="flex gap-3">
+                            <Button variant="secondary" onClick={handleAbort}>
+                                Stop
+                            </Button>
+                            <Button disabled className="min-w-[150px] justify-center bg-blue-500 opacity-90 cursor-wait">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin"></div>
+                                    Generating...
+                                </div>
+                            </Button>
+                        </div>
+                    ) : (
+                        <Button 
+                            onClick={handleGenerate}
+                            className="min-w-[150px] justify-center text-base bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md"
+                            disabled={sourceMode === "topic" ? !topic.trim() : !fileObj}
+                        >
+                            Generate Test <IconArrowRight className="ml-2 w-4 h-4" />
+                        </Button>
+                    )}
+                </div>
+            </div>
         </div>
     );
 }

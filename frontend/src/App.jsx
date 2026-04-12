@@ -11,7 +11,6 @@ import { ProfilePage } from "./pages/ProfilePage";
 import { TestAnalyticsPage } from "./pages/TestAnalyticsPage";
 import { AttemptDetailPage } from "./pages/AttemptDetailPage";
 import { MyAttemptDetailPage } from "./pages/MyAttemptDetailPage";
-import { ReviewTestsPage } from "./pages/ReviewTestsPage";
 import { ReviewTestLandingPage } from "./pages/ReviewTestLandingPage";
 import { LearningDashboardPage } from "./pages/LearningDashboardPage";
 import { PracticeSessionCreatePage } from "./pages/PracticeSessionCreatePage";
@@ -99,14 +98,6 @@ export default function App() {
                         }
                     />
                     {/* Review test routes */}
-                    <Route
-                        path="/review-tests"
-                        element={
-                            <PrivateRoute>
-                                <ReviewTestsPage />
-                            </PrivateRoute>
-                        }
-                    />
                     <Route
                         path="/review-tests/:code"
                         element={

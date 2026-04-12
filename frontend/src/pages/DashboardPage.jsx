@@ -93,13 +93,18 @@ export function DashboardPage() {
 
     return (
         <div className="max-w-7xl mx-auto px-4 py-24 sm:py-32">
-            <div className="flex justify-between items-center mb-10">
-                <h1 className="text-3xl sm:text-4xl font-bold">
-                    Your Dashboard
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-10">
+                <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">
+                    Your Learning Hub
                 </h1>
-                <Button onClick={() => navigate("/create")}>
-                    Create New Test
-                </Button>
+                <div className="flex gap-3">
+                    <Button onClick={() => navigate("/learning")} variant="secondary" className="bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100">
+                        Adaptive Learning
+                    </Button>
+                    <Button onClick={() => navigate("/create")}>
+                        Create New Test
+                    </Button>
+                </div>
             </div>
             {/* Recommendations Panel */}
             <div className="mb-8">
@@ -116,7 +121,7 @@ export function DashboardPage() {
                                 : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                         }`}
                     >
-                        📚 My Tests
+                        📚 Test Library
                     </button>
                     <button
                         onClick={() => setActiveTab("myResults")}
@@ -126,7 +131,7 @@ export function DashboardPage() {
                                 : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                         }`}
                     >
-                        📊 My Attempts
+                        📊 Activity History
                     </button>
                     <button
                         onClick={() => setActiveTab("reviewTests")}
@@ -136,7 +141,7 @@ export function DashboardPage() {
                                 : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                         }`}
                     >
-                        📝 Review Tests
+                        📝 Review & Practice
                     </button>
                 </nav>
             </div>
@@ -426,9 +431,14 @@ export function DashboardPage() {
                                 wrong answers to start practicing and improving
                                 your knowledge.
                             </p>
-                            <Button onClick={() => setActiveTab("myResults")}>
-                                View My Attempts
-                            </Button>
+                            <div className="flex gap-3 justify-center">
+                                <Button onClick={() => navigate("/learning/practice")} className="bg-purple-600 hover:bg-purple-700 text-white">
+                                    Start Practice Session
+                                </Button>
+                                <Button variant="secondary" onClick={() => setActiveTab("myResults")}>
+                                    View Activity
+                                </Button>
+                            </div>
                         </div>
                     ) : loading ? (
                         <div className="text-center py-12">
@@ -524,15 +534,15 @@ export function DashboardPage() {
                                         </div>
 
                                         <button
-                                            className="w-full px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all font-medium shadow-md"
+                                            className="w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all font-medium shadow-md flex items-center justify-center gap-2"
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 navigate(
-                                                    `/review-tests/${test.code}`
+                                                    `/code/${test.code}`
                                                 );
                                             }}
                                         >
-                                            Start Review
+                                            Take Review Test <span>→</span>
                                         </button>
                                     </div>
                                 );

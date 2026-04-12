@@ -8,6 +8,7 @@ export function ReviewGeneratorModal({ isOpen, onClose, attemptId = null }) {
     const toast = useToast();
 
     const [strategy, setStrategy] = useState("wrong_recent");
+    const [topic, setTopic] = useState("");
     const [selectedAttemptId, setSelectedAttemptId] = useState(attemptId || "");
     const [questionCount, setQuestionCount] = useState(10);
     const [variantMode, setVariantMode] = useState(false);
@@ -45,13 +46,18 @@ export function ReviewGeneratorModal({ isOpen, onClose, attemptId = null }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (!selectedAttemptId) {
+        if (strategy === "topic" && !topic.trim()) {
+            toast.error("Please enter a topic");
+            return;
+        }
+
+        if (strategy !== "topic" && !selectedAttemptId) {
             toast.error("Please select an attempt");
             return;
         }
 
         // Basic client-side format guard (mirrors relaxed backend regex)
-        if (!/^[a-zA-Z0-9_-]{6,}$/.test(selectedAttemptId)) {
+        if (strategy !== "topic" && !/^[a-zA-Z0-9_-]{6,}$/.test(selectedAttemptId)) {
             toast.error("Invalid attempt id format");
             return;
         }
@@ -60,7 +66,8 @@ export function ReviewGeneratorModal({ isOpen, onClose, attemptId = null }) {
         try {
             const result = await generateReview({
                 strategy,
-                attemptId: selectedAttemptId,
+                attemptId: strategy === "topic" ? undefined : selectedAttemptId,
+                topic: strategy === "topic" ? topic : undefined,
                 questionCount,
                 variantMode: variantMode ? "variant" : "exact",
             });
@@ -123,21 +130,47 @@ export function ReviewGeneratorModal({ isOpen, onClose, attemptId = null }) {
                                 Spaced Repetition
                             </option>
                             <option value="mix">Mixed Strategy</option>
+                            <option value="topic">Specific Topic</option>
                         </select>
                         <p className="mt-1 text-xs text-gray-500">
                             Choose how questions are selected from your wrong
-                            answers
+                            answers, or provide a topic.
                         </p>
                     </div>
 
-                    {/* Attempt Selection */}
-                    <div>
-                        <label
-                            htmlFor="attempt"
-                            className="block text-sm font-medium text-gray-700 mb-1"
-                        >
-                            Source Attempt *
-                        </label>
+                    {/* Topic Input (Conditional) */}
+                    {strategy === "topic" && (
+                        <div>
+                            <label
+                                htmlFor="topic"
+                                className="block text-sm font-medium text-gray-700 mb-1"
+                            >
+                                Topic *
+                            </label>
+                            <input
+                                id="topic"
+                                type="text"
+                                value={topic}
+                                onChange={(e) => setTopic(e.target.value)}
+                                placeholder="e.g., React Hooks, Machine Learning..."
+                                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                disabled={loading}
+                            />
+                            <p className="mt-1 text-xs text-gray-500">
+                                Generate a brand new practice test based on this topic.
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Attempt Selection (Hidden if Topic strategy) */}
+                    {strategy !== "topic" && (
+                        <div>
+                            <label
+                                htmlFor="attempt"
+                                className="block text-sm font-medium text-gray-700 mb-1"
+                            >
+                                Source Attempt *
+                            </label>
                         {loadingAttempts ? (
                             <p className="text-sm text-gray-500">
                                 Loading attempts...
@@ -168,18 +201,19 @@ export function ReviewGeneratorModal({ isOpen, onClose, attemptId = null }) {
                                         </option>
                                     ))}
                                 </select>
-                                {attemptId && (
-                                    <p className="mt-1 text-xs text-blue-600">
-                                        Pre-selected from current attempt
-                                    </p>
-                                )}
-                            </>
-                        )}
-                        <p className="mt-1 text-xs text-gray-500">
-                            Review test will be based on wrong answers from this
-                            attempt
-                        </p>
-                    </div>
+                                    {attemptId && (
+                                        <p className="mt-1 text-xs text-blue-600">
+                                            Pre-selected from current attempt
+                                        </p>
+                                    )}
+                                </>
+                            )}
+                            <p className="mt-1 text-xs text-gray-500">
+                                Review test will be based on wrong answers from this
+                                attempt
+                            </p>
+                        </div>
+                    )}
 
                     {/* Question Count */}
                     <div>
@@ -237,7 +271,7 @@ export function ReviewGeneratorModal({ isOpen, onClose, attemptId = null }) {
                         <button
                             type="submit"
                             className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                            disabled={loading || !selectedAttemptId}
+                            disabled={loading || (strategy === "topic" ? !topic.trim() : !selectedAttemptId)}
                         >
                             {loading ? "Generating..." : "Generate Review"}
                         </button>

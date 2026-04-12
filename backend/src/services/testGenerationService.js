@@ -16,6 +16,7 @@ function scoreAnswers(test, answers) {
 export class TestGenerationService {
     async generateFromText({
         sourceText,
+        topic,
         filename,
         title,
         questionCount,
@@ -40,7 +41,8 @@ export class TestGenerationService {
         const model = process.env.OPENROUTER_MODEL || "openai/gpt-4o-mini";
 
         const prompt = this._buildPrompt({
-            sourceText,
+            sourceText: sourceText || null,
+            topic: topic || null,
             title,
             questionCount,
             difficulty,
@@ -99,9 +101,9 @@ export class TestGenerationService {
         const test = await testRepo.create({
             id: uuid(),
             code,
-            title: title || "Generated Test",
+            title: title || (topic ? `Test: ${topic.slice(0, 80)}` : "Generated Test"),
             source_filename: filename || null,
-            source_text: sourceText.slice(0, 20000),
+            source_text: (sourceText || topic || "").slice(0, 20000),
             model,
             params_json: generationParams,
             questions_json: questions,
@@ -323,11 +325,19 @@ export class TestGenerationService {
 
     _buildPrompt({
         sourceText,
+        topic,
         title,
         questionCount,
         difficulty,
         extraInstructions,
     }) {
+        // Topic-only mode: generate from topic without source material
+        if (!sourceText && topic) {
+            return `You are an educational quiz generator. Produce EXACTLY ${questionCount} questions (no more, no fewer) at ${difficulty} difficulty about the topic: "${topic}".\nRequirements:\n- Prefer multiple-choice (4 distinct plausible options) when feasible; may mix short or true/false.\n- Each question object MUST include: id (uuid acceptable), type, question, options (array, empty if not MCQ), answer (string), explanation (why correct answer is correct; 40-400 chars), reference (short snippet or null).\n- Questions should cover different aspects of the topic, from fundamentals to applied knowledge.\n- Explanations must not simply restate the question; they should give conceptual reasoning.\n- Do NOT leak answers inside explanation for true/false beyond minimal rationale.\n- Avoid duplicate explanations; keep them specific.\n- Output ONLY JSON with {\n  \"questions\": [ { ... } ]\n}.\nTitle: ${title}\nExtra Instructions: ${
+                extraInstructions || "None"
+            }`;
+        }
+        // Source text mode: generate from provided material
         return `You are an educational quiz generator. Produce EXACTLY ${questionCount} questions (no more, no fewer) at ${difficulty} difficulty derived ONLY from the provided material.\nRequirements:\n- Prefer multiple-choice (4 distinct plausible options) when feasible; may mix short or true/false.\n- Each question object MUST include: id (uuid acceptable), type, question, options (array, empty if not MCQ), answer (string), explanation (why correct answer is correct; 40-400 chars), reference (short snippet or null).\n- Explanations must not simply restate the question; they should give conceptual reasoning.\n- Do NOT leak answers inside explanation for true/false beyond minimal rationale.\n- Avoid duplicate explanations; keep them specific.\n- Output ONLY JSON with {\n  \"questions\": [ { ... } ]\n}.\nTitle: ${title}\nMaterial Start:\n${sourceText}\nMaterial End.\nExtra Instructions: ${
             extraInstructions || "None"
         }`;

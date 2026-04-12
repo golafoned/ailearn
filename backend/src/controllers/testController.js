@@ -2,11 +2,14 @@ import { TestGenerationService } from "../services/testGenerationService.js";
 import { TestRepository } from "../repositories/testRepository.js";
 import { TestAttemptRepository } from "../repositories/testAttemptRepository.js";
 import { AttemptAnswersRepository } from "../repositories/testAttemptRepository.js";
+import { UserConceptRepository } from "../repositories/userConceptRepository.js";
+import { MasteryCalculationService } from "../services/masteryCalculationService.js";
 import { v4 as uuid } from "uuid";
 import { computeScore } from "../services/testGenerationService.js";
 import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
 import { ApiError } from "../utils/ApiError.js";
+import { logger } from "../config/logger.js";
 import {
     extractTopicsFromWrongAnswers,
     synthesizeRecommendationBlocks,
@@ -16,6 +19,8 @@ const genService = new TestGenerationService();
 const testRepo = new TestRepository();
 const attemptRepo = new TestAttemptRepository();
 const attemptAnswersRepo = new AttemptAnswersRepository();
+const userConceptRepo = new UserConceptRepository();
+const masteryService = new MasteryCalculationService();
 
 export async function generateTest(req, res, next) {
     try {
@@ -27,13 +32,15 @@ export async function generateTest(req, res, next) {
             expiresInMinutes,
             extraInstructions,
             sourceText,
+            topic,
             filename,
             params,
         } = req.body;
         const test = await genService.generateFromText({
-            sourceText,
+            sourceText: sourceText || null,
+            topic: topic || null,
             filename,
-            title,
+            title: title || (topic ? topic.slice(0, 80) : "Untitled Test"),
             questionCount,
             difficulty,
             timeLimitSeconds,
@@ -200,6 +207,24 @@ export async function submitAttempt(req, res, next) {
             : null;
         await attemptRepo.submit(attemptId, answers, score);
         await attemptAnswersRepo.bulkInsert(attemptId, answerRecords);
+
+        // Auto-extract concepts from questions and populate user_concepts
+        if (attempt.user_id) {
+            try {
+                await _autoExtractConcepts(
+                    attempt.user_id,
+                    questions,
+                    answerRecords,
+                    test.title || ""
+                );
+            } catch (conceptErr) {
+                logger.error(
+                    { error: conceptErr.message },
+                    "Failed to auto-extract concepts (non-fatal)"
+                );
+            }
+        }
+
         const updated = await attemptRepo.findById(attemptId);
         res.json({
             attemptId: updated.id,
@@ -210,6 +235,113 @@ export async function submitAttempt(req, res, next) {
         });
     } catch (e) {
         next(e);
+    }
+}
+
+/**
+ * Auto-extract concepts from test questions and create/update user_concepts.
+ * Uses question text + title to derive meaningful concept names.
+ */
+async function _autoExtractConcepts(userId, questions, answerRecords, testTitle) {
+    // Extract concept names from questions using keyword analysis
+    const conceptMap = {}; // conceptName -> { correct, total }
+
+    // Use the test title as a primary concept
+    if (testTitle && testTitle.length > 2) {
+        const titleConcept = testTitle
+            .replace(/^(test:|review practice|seed attempt:)\s*/i, "")
+            .trim();
+        if (titleConcept.length > 2) {
+            conceptMap[titleConcept] = { correct: 0, total: 0 };
+        }
+    }
+
+    // Extract additional concepts from questions
+    for (const q of questions) {
+        const questionText = q.question || q.text || "";
+        // Extract important multi-word phrases (nouns/terms)
+        const words = questionText
+            .replace(/[^a-zA-Zа-яА-ЯіІїЇєЄґҐ0-9\s-]/g, "")
+            .split(/\s+/)
+            .filter((w) => w.length > 4);
+
+        // Use conceptTags if present (from adaptive sessions)
+        if (q.conceptTags && Array.isArray(q.conceptTags)) {
+            for (const tag of q.conceptTags) {
+                if (!conceptMap[tag]) conceptMap[tag] = { correct: 0, total: 0 };
+            }
+        }
+    }
+
+    // Tally correct/incorrect per concept from answerRecords
+    for (const [name, stats] of Object.entries(conceptMap)) {
+        for (const rec of answerRecords) {
+            stats.total++;
+            if (rec.is_correct === 1) stats.correct++;
+        }
+    }
+
+    // If we extracted the title concept, give it proper stats
+    if (Object.keys(conceptMap).length === 0) return;
+
+    // Create/update user_concepts
+    for (const [conceptName, stats] of Object.entries(conceptMap)) {
+        if (!conceptName || conceptName.length < 2) continue;
+        let existing = await userConceptRepo.findByUserAndConcept(
+            userId,
+            conceptName
+        );
+        const accuracy = stats.total > 0 ? stats.correct / stats.total : 0;
+        const initialMastery = Math.round(accuracy * 60); // Scale to 0-60 for first attempt
+
+        if (!existing) {
+            const nextReview = masteryService.calculateNextReviewDate(
+                initialMastery,
+                0
+            );
+            await userConceptRepo.create({
+                id: uuid(),
+                user_id: userId,
+                concept_name: conceptName,
+                mastery_level: initialMastery,
+                total_attempts: stats.total,
+                correct_attempts: stats.correct,
+                last_practiced_at: new Date().toISOString(),
+                next_review_due: nextReview,
+                difficulty_level: masteryService.suggestDifficulty(initialMastery),
+                consecutive_correct: accuracy === 1 ? 1 : 0,
+                consecutive_wrong: accuracy === 0 ? 1 : 0,
+            });
+            logger.info(
+                { userId, concept: conceptName, mastery: initialMastery },
+                "Auto-created concept from test submission"
+            );
+        } else {
+            // Update existing concept
+            const newTotal = existing.total_attempts + stats.total;
+            const newCorrect = existing.correct_attempts + stats.correct;
+            const newMastery = masteryService.calculateMasteryChange(
+                existing.mastery_level,
+                "medium",
+                accuracy > 0.5
+            );
+            const nextReview = masteryService.calculateNextReviewDate(
+                newMastery,
+                accuracy === 1 ? (existing.consecutive_correct || 0) + 1 : 0
+            );
+            await userConceptRepo.update(userId, conceptName, {
+                mastery_level: newMastery,
+                total_attempts: newTotal,
+                correct_attempts: newCorrect,
+                last_practiced_at: new Date().toISOString(),
+                next_review_due: nextReview,
+                difficulty_level: masteryService.suggestDifficulty(newMastery),
+                consecutive_correct:
+                    accuracy === 1 ? (existing.consecutive_correct || 0) + 1 : 0,
+                consecutive_wrong:
+                    accuracy === 0 ? (existing.consecutive_wrong || 0) + 1 : 0,
+            });
+        }
     }
 }
 
@@ -446,14 +578,48 @@ export async function closeTest(req, res, next) {
 // --- Review Test Endpoints ---
 export async function generateReviewTest(req, res, next) {
     try {
-        const { strategy, baseTestId, attemptId, questionCount, variantMode } =
+        const { strategy, baseTestId, attemptId, questionCount, variantMode, topic } =
             req.body;
-        // Validate strategy
-        if (!["wrong_recent", "spaced_repetition", "mix"].includes(strategy)) {
-            throw ApiError.reviewStrategyUnsupported();
-        }
-        // Collect wrong answers context
+
+        let pseudoSource = "";
         let sourceAttempts = [];
+        let title = "Review Practice";
+
+        // Strategy: topic — generate from topic directly (no prior wrong answers needed)
+        if (strategy === "topic" && topic) {
+            title = `Practice: ${topic.slice(0, 60)}`;
+            const test = await genService.generateFromText({
+                sourceText: null,
+                topic,
+                filename: null,
+                title,
+                questionCount,
+                difficulty: "medium",
+                timeLimitSeconds: 60 * Math.max(3, Math.round(questionCount * 1.2)),
+                expiresInMinutes: 60 * 24 * 7,
+                extraInstructions: `Practice test about: ${topic}`,
+                params: { strategy, variantMode },
+                createdBy: req.user.id,
+            });
+            // Mark as review
+            const dbMod = await import("../db/index.js");
+            const dbInstance = await dbMod.getDb();
+            dbInstance.exec(
+                `UPDATE tests SET is_review=1, review_strategy='${strategy}' WHERE id='${test.id}';`
+            );
+            const updated = await testRepo.findById(test.id);
+            return res.status(201).json({
+                id: updated.id,
+                code: updated.code,
+                isReview: true,
+                strategy,
+                questionCount,
+                sourceAttempts: [],
+                reviewSourceTestId: null,
+            });
+        }
+
+        // Collect wrong answers context (existing flow)
         let wrongAnswerRows = [];
         if (attemptId) {
             const att = await attemptRepo.findById(attemptId);
@@ -461,9 +627,7 @@ export async function generateReviewTest(req, res, next) {
                 throw ApiError.reviewInvalidContext();
             if (!att.submitted_at)
                 throw ApiError.reviewInvalidContext("Attempt not submitted");
-            // join answers
-            const ansRepo = attemptAnswersRepo; // reuse
-            wrongAnswerRows = (await ansRepo.listForAttempt(att.id)).filter(
+            wrongAnswerRows = (await attemptAnswersRepo.listForAttempt(att.id)).filter(
                 (a) => a.is_correct === 0
             );
             sourceAttempts.push(att.id);
@@ -481,17 +645,29 @@ export async function generateReviewTest(req, res, next) {
                 const ans = await attemptAnswersRepo.listForAttempt(p.id);
                 wrongAnswerRows.push(...ans.filter((a) => a.is_correct === 0));
             }
+
+            // If no wrong answers, use the test's source material instead (no chicken-and-egg)
+            if (!wrongAnswerRows.length) {
+                pseudoSource = baseTest.source_text || "";
+                title = `Review: ${baseTest.title || "Practice"}`;
+            }
         }
-        if (!wrongAnswerRows.length)
+
+        // Build pseudo source from wrong answers if available
+        if (wrongAnswerRows.length > 0) {
+            const distinctQuestions = Array.from(
+                new Set(wrongAnswerRows.map((a) => a.question_text))
+            ).slice(0, 100);
+            pseudoSource = distinctQuestions.join("\n").slice(0, 15000);
+            title = `Review Practice (${strategy})`;
+        }
+
+        if (!pseudoSource) {
             throw ApiError.reviewInvalidContext(
-                "No wrong answers to base review on"
+                "No source material found. Provide a topic, baseTestId, or attemptId."
             );
-        // Derive synthetic source text: combine distinct question_text
-        const distinctQuestions = Array.from(
-            new Set(wrongAnswerRows.map((a) => a.question_text))
-        ).slice(0, 100);
-        const pseudoSource = distinctQuestions.join("\n").slice(0, 15000);
-        const title = `Review Practice (${strategy})`;
+        }
+
         const test = await genService.generateFromText({
             sourceText: pseudoSource,
             filename: null,
@@ -500,11 +676,13 @@ export async function generateReviewTest(req, res, next) {
             difficulty: "medium",
             timeLimitSeconds: 60 * Math.max(3, Math.round(questionCount * 1.2)),
             expiresInMinutes: 60 * 24 * 7,
-            extraInstructions: `Focus on reinforcing concepts the learner previously answered incorrectly. Strategy=${strategy}; VariantMode=${variantMode}`,
+            extraInstructions: wrongAnswerRows.length > 0
+                ? `Focus on reinforcing concepts the learner previously answered incorrectly. Strategy=${strategy}; VariantMode=${variantMode}`
+                : `Generate practice questions covering the same material. Strategy=${strategy}; VariantMode=${variantMode}`,
             params: { strategy, variantMode },
             createdBy: req.user.id,
         });
-        // Mark as review (update row if not already flagged by repository). Simpler: direct update.
+        // Mark as review
         const dbMod = await import("../db/index.js");
         const dbInstance = await dbMod.getDb();
         const attemptsJson = JSON.stringify(sourceAttempts).replace(/'/g, "''");

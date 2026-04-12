@@ -269,6 +269,7 @@ export async function createSession(req, res, next) {
             sessionType,
             conceptSelection = "due",
             customConcepts = [],
+            topic,
             targetDifficulty = "adaptive",
             questionCount = 10,
         } = req.body;
@@ -321,28 +322,67 @@ export async function createSession(req, res, next) {
                         .slice(0, 5);
                 }
             }
-            if (selectedConcepts.length === 0) {
+            if (conceptSelection === "topic" && topic) {
+                // Topic-based practice doesn't fail if no prior concepts exist
+                selectedConcepts = []; 
+            } else if (selectedConcepts.length === 0) {
                 throw ApiError.badRequest(
                     "NO_CONCEPTS_AVAILABLE",
-                    "No concepts available for practice. Start by completing any test or adaptive session to establish baseline concepts."
+                    "No concepts available for practice. Start a 'Quick Practice' by topic or complete a test first."
                 );
             }
         }
 
-        // Build mastery map
+        // Build mastery map for concepts (if any)
         const conceptNames = selectedConcepts.map((c) => c.concept_name);
         const masteryLevels = {};
         selectedConcepts.forEach((c) => {
             masteryLevels[c.concept_name] = c.mastery_level;
         });
 
-        // Generate adaptive questions
-        const questions = await adaptiveService.generateQuestions(
-            conceptNames,
-            masteryLevels,
-            questionCount,
-            userId
-        );
+        // Generate questions
+        let questions = [];
+        let source_text = "";
+        
+        if (conceptSelection === "topic" && topic) {
+            // Generate straight from topic
+            const { TestGenerationService } = await import("../services/testGenerationService.js");
+            const genService = new TestGenerationService();
+            const schemaQuestions = await genService._callOpenRouterJSON(
+                genService._buildPrompt({
+                    sourceText: null,
+                    topic: topic,
+                    title: `${sessionType} Practice`,
+                    questionCount,
+                    difficulty: targetDifficulty === "adaptive" ? "medium" : targetDifficulty,
+                    extraInstructions: "Generate practice questions for this topic.",
+                }),
+                targetDifficulty === "hard" ? "openai/gpt-4o" : "openai/gpt-4o-mini"
+            );
+            
+            // Format to match adaptive questions
+            questions = schemaQuestions.questions.map(q => ({
+                id: q.id || uuid(),
+                type: q.type || "multiple_choice",
+                text: q.question,
+                choices: q.options || [],
+                answer: q.answer,
+                explanation: q.explanation || "No explanation provided.",
+                difficulty: targetDifficulty === "adaptive" ? "medium" : targetDifficulty,
+                conceptTags: [topic]
+            }));
+            source_text = `Topic practice session for: ${topic}`;
+            conceptNames.push(topic); // Add topic as concept for tracking
+        } else {
+            // Generate adaptive questions based on existing concepts
+            questions = await adaptiveService.generateQuestions(
+                conceptNames,
+                masteryLevels,
+                questionCount,
+                userId
+            );
+            source_text = `Adaptive practice session for: ${conceptNames.join(", ")}`;
+        }
 
         // Create test
         const testId = uuid();
@@ -354,14 +394,13 @@ export async function createSession(req, res, next) {
                 sessionType.charAt(0).toUpperCase() + sessionType.slice(1)
             } Practice`,
             source_filename: null,
-            source_text: `Adaptive practice session for: ${conceptNames.join(
-                ", "
-            )}`,
+            source_text,
             model: "adaptive",
             params_json: {
                 sessionType,
                 targetDifficulty,
                 concepts: conceptNames,
+                topic: topic || null,
             },
             questions_json: questions,
             expires_at: new Date(

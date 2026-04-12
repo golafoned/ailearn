@@ -20,6 +20,7 @@ export function PracticeSessionCreatePage() {
     const [customConcepts, setCustomConcepts] = useState(
         initialState.customConcepts || []
     );
+    const [topic, setTopic] = useState(initialState.topic || "");
     const [difficulty, setDifficulty] = useState("adaptive");
     const [questionCount, setQuestionCount] = useState(10);
     const [creating, setCreating] = useState(false);
@@ -39,10 +40,10 @@ export function PracticeSessionCreatePage() {
         try {
             const session = await createSession({
                 sessionType,
-                conceptSelection:
-                    conceptSelection === "custom" ? "custom" : conceptSelection,
+                conceptSelection, // e.g., 'due', 'weak', 'random', 'custom', 'topic'
                 customConcepts:
                     conceptSelection === "custom" ? customConcepts : undefined,
+                topic: conceptSelection === "topic" ? topic : undefined,
                 targetDifficulty: difficulty,
                 questionCount,
             });
@@ -237,6 +238,37 @@ export function PracticeSessionCreatePage() {
                         <label className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
                             <input
                                 type="radio"
+                                value="topic"
+                                checked={conceptSelection === "topic"}
+                                onChange={(e) =>
+                                    setConceptSelection(e.target.value)
+                                }
+                                className="mt-1"
+                            />
+                            <div className="flex-1">
+                                <div className="font-medium text-gray-900">
+                                    Specific Topic
+                                </div>
+                                <div className="text-xs text-gray-600 mb-2">
+                                    Generate AI practice from a free-text topic
+                                </div>
+                                {conceptSelection === "topic" && (
+                                    <div className="mt-2">
+                                        <input
+                                            type="text"
+                                            value={topic}
+                                            onChange={(e) => setTopic(e.target.value)}
+                                            placeholder="e.g., Photosynthesis, Python basics..."
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        </label>
+
+                        <label className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                            <input
+                                type="radio"
                                 value="custom"
                                 checked={conceptSelection === "custom"}
                                 onChange={(e) =>
@@ -399,7 +431,8 @@ export function PracticeSessionCreatePage() {
                         disabled={
                             creating ||
                             (conceptSelection === "custom" &&
-                                customConcepts.length === 0)
+                                customConcepts.length === 0) ||
+                            (conceptSelection === "topic" && !topic.trim())
                         }
                         className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                     >

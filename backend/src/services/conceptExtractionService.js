@@ -6,10 +6,87 @@ export class ConceptExtractionService {
      * @param {string} questionText - The question text
      * @param {string} answer - The correct answer
      * @param {string} category - Optional category hint
+     * @param {string} explanation - Optional explanation
      * @returns {Array<Object>} Array of concepts with confidence scores
      */
-    async extractFromQuestion(questionText, answer, category = null) {
-        // For now, use keyword-based extraction (can be enhanced with AI later)
+    async extractFromQuestion(questionText, answer, category = null, explanation = null) {
+        // Use AI if possible, fallback to keyword
+        if (process.env.NODE_ENV !== "test" || process.env.DRY_RUN_AI === "false") {
+            try {
+                return await this._extractWithAI(questionText, answer, explanation, category);
+            } catch (e) {
+                logger.warn({ error: e.message }, "AI Concept Extraction failed, falling back to keywords");
+                return this._extractWithKeywords(questionText, answer, category);
+            }
+        } else {
+            return this._extractWithKeywords(questionText, answer, category);
+        }
+    }
+
+    async _extractWithAI(questionText, answer, explanation, category) {
+        // Reuse TestGenerationService's OpenRouter integration
+        const { TestGenerationService } = await import("./testGenerationService.js");
+        const genService = new TestGenerationService();
+        
+        const prompt = `Analyze the following educational question and extract the core underlying academic concepts or skills required to answer it.
+        
+Question: ${questionText}
+Answer: ${answer || "N/A"}
+Explanation: ${explanation || "N/A"}
+Category hint: ${category || "General"}
+
+Requirements:
+- Extract 1 to 4 highly specific concepts (e.g., "Photosynthesis", "Quadratic Equations", "Newton's Second Law").
+- Avoid overly broad topics like "Biology" or "Math".
+- Provide a confidence score (1-100) for each concept based on how central it is to the question.
+- Output ONLY JSON with the following structure:
+{
+  "concepts": [
+    { "name": "Concept Name", "confidence": 95, "category": "Specific Category" }
+  ]
+}`;
+
+        // Create a custom _callOpenRouterJSON wrapper specifically for concepts if needed, 
+        // but we can just use the raw endpoint or a simplified version here for reliability.
+        const apiKey = process.env.OPENROUTER_API_KEY;
+        const model = "openai/gpt-4o-mini";
+        
+        const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${apiKey}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                model,
+                messages: [{ role: "user", content: prompt }],
+                response_format: { type: "json_object" },
+                temperature: 0.1
+            })
+        });
+
+        if (!res.ok) throw new Error(`OpenRouter API error: ${res.status}`);
+        
+        const json = await res.json();
+        const content = json.choices?.[0]?.message?.content;
+        
+        if (!content) throw new Error("Empty response from AI");
+        
+        const parsed = JSON.parse(content);
+        
+        if (!parsed.concepts || !Array.isArray(parsed.concepts)) {
+            throw new Error("Invalid schema returned by AI");
+        }
+
+        return parsed.concepts.map(c => ({
+            name: this._capitalizeWords(c.name || "Unknown"),
+            category: c.category || category || "General",
+            confidence: c.confidence || 80,
+            source: "ai"
+        })).slice(0, 5);
+    }
+
+    _extractWithKeywords(questionText, answer, category) {
         const concepts = [];
 
         // Common domain keywords and their categories
@@ -140,7 +217,8 @@ export class ConceptExtractionService {
             const concepts = await this.extractFromQuestion(
                 q.question || q.question_text,
                 q.answer,
-                category
+                category,
+                q.explanation
             );
             results.push({ questionId: q.id, concepts });
         }
@@ -220,7 +298,8 @@ export class ConceptExtractionService {
         const concepts = await this.extractFromQuestion(
             question.question,
             question.answer,
-            category
+            category,
+            question.explanation
         );
 
         const difficulty =
