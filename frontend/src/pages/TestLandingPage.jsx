@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useTestData } from "../contexts/TestDataContext";
 import { Button } from "../components/Button";
 import { useAuth } from "../contexts/AuthContext";
@@ -9,6 +9,7 @@ import { Leaderboard } from "../components/Leaderboard";
 export function TestLandingPage() {
     const { code } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const {
         fetchTestByCode,
         currentTest,
@@ -51,7 +52,7 @@ export function TestLandingPage() {
                 participantName: finalParticipant,
                 displayName: finalDisplay || undefined,
             });
-            navigate("/attempt");
+            navigate("/attempt", { state: location.state });
         } catch (e) {
             // Attempt to read backend code from generic error message (context stores only message currently)
             const msg = (e && e.message) || "Unable to start attempt";

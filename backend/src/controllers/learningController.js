@@ -985,17 +985,39 @@ export async function getAchievements(req, res, next) {
         const stats = await userConceptRepo.getStats(userId);
         const sessionCount = await sessionRepo.countByUser(userId);
 
+        const currentLevel = Math.min(6, Math.floor(stats.mastered_count / 10) + 1);
+        const nextMilestone = Math.ceil((stats.mastered_count + 1) / 10) * 10;
+
         res.json({
             level: {
-                current: Math.min(6, Math.floor(stats.mastered_count / 10) + 1),
+                current: currentLevel,
                 name: _getLevelName(stats.mastered_count),
                 progress: stats.mastered_count,
-                nextMilestone: Math.ceil((stats.mastered_count + 1) / 10) * 10,
+                nextLevel: currentLevel + 1,
+                nextMilestone,
+                conceptsEarned: stats.mastered_count,
+                conceptsRequired: nextMilestone,
             },
             totalEarned: progress.earnedCount,
             totalAvailable: progress.totalCount,
-            earned: progress.earned,
-            inProgress: progress.inProgress,
+            earned: progress.earned.map((a) => ({
+                achievement_type: a.achievement_type,
+                name: a.achievement_name,
+                description: a.description,
+                progress: a.progress,
+                progress_total: a.progress_total,
+                earnedAt: a.earned_at,
+            })),
+            inProgress: progress.inProgress.map((a) => ({
+                achievement_type: a.achievement_type,
+                name: a.achievement_name,
+                description: a.description,
+                progress: a.progress,
+                progress_total: a.progress_total,
+                percentage: a.progress_total > 0
+                    ? Math.round((a.progress / a.progress_total) * 100)
+                    : 0,
+            })),
         });
     } catch (e) {
         next(e);

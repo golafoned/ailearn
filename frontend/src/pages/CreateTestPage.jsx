@@ -166,7 +166,7 @@ export function CreateTestPage() {
             
             const full = await pollForQuestions(genResp.code, {});
             setPreviewTest(full);
-            navigate("/preview");
+            navigate("/generated");
         } catch (e) {
             if (e.name === "AbortError") return;
             console.error(e);

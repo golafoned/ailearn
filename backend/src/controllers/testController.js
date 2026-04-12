@@ -130,15 +130,15 @@ export async function startAttempt(req, res, next) {
         // Safety: if authenticated and stored participant_name differs from enforced name, patch it
         if (req.user && attempt.participant_name !== finalParticipantName) {
             // minimal inline update to keep repository simple
-            const dbMod = await import("../db/index.js");
-            const dbInstance = await dbMod.getDb();
-            const safeName = finalParticipantName.replace(/'/g, "''");
-            dbInstance.exec(
-                `UPDATE test_attempts SET participant_name='${safeName}' WHERE id='${attempt.id}';`
+            const { run: dbRun } = await import("../db/index.js");
+            await dbRun(
+                `UPDATE test_attempts SET participant_name=? WHERE id=?`,
+                [finalParticipantName, attempt.id]
             );
             if (!attempt.user_id) {
-                dbInstance.exec(
-                    `UPDATE test_attempts SET user_id='${req.user.id}' WHERE id='${attempt.id}';`
+                await dbRun(
+                    `UPDATE test_attempts SET user_id=? WHERE id=?`,
+                    [req.user.id, attempt.id]
                 );
             }
         }
@@ -563,13 +563,14 @@ export async function closeTest(req, res, next) {
         if (!test) throw ApiError.notFound("Test not found", "TEST_NOT_FOUND");
         if (test.created_by && test.created_by !== req.user?.id)
             throw ApiError.forbidden("Forbidden", "FORBIDDEN_CLOSE_TEST");
-        // Set expires_at to past
-        const dbMod = await import("../db/index.js");
-        const dbInstance = await dbMod.getDb();
-        dbInstance.exec(
-            `UPDATE tests SET expires_at=datetime('now','-1 minute') WHERE id='${testId}';`
+        // Set expires_at to past using parameterized query
+        const { run } = await import("../db/index.js");
+        await run(
+            `UPDATE tests SET expires_at=datetime('now','-1 minute') WHERE id=?`,
+            [testId]
         );
-        res.json({ testId, closed: true });
+        const closedAt = new Date().toISOString();
+        res.json({ testId, closed: true, closedAt });
     } catch (e) {
         next(e);
     }
@@ -602,10 +603,10 @@ export async function generateReviewTest(req, res, next) {
                 createdBy: req.user.id,
             });
             // Mark as review
-            const dbMod = await import("../db/index.js");
-            const dbInstance = await dbMod.getDb();
-            dbInstance.exec(
-                `UPDATE tests SET is_review=1, review_strategy='${strategy}' WHERE id='${test.id}';`
+            const { run: dbRun } = await import("../db/index.js");
+            await dbRun(
+                `UPDATE tests SET is_review=1, review_strategy=? WHERE id=?`,
+                [strategy, test.id]
             );
             const updated = await testRepo.findById(test.id);
             return res.status(201).json({
@@ -683,15 +684,11 @@ export async function generateReviewTest(req, res, next) {
             createdBy: req.user.id,
         });
         // Mark as review
-        const dbMod = await import("../db/index.js");
-        const dbInstance = await dbMod.getDb();
-        const attemptsJson = JSON.stringify(sourceAttempts).replace(/'/g, "''");
-        dbInstance.exec(
-            `UPDATE tests SET is_review=1, review_source_test_id=${
-                baseTestId ? `'${baseTestId}'` : "NULL"
-            }, review_origin_attempt_ids='${attemptsJson}', review_strategy='${strategy}' WHERE id='${
-                test.id
-            }';`
+        const { run: dbRun2 } = await import("../db/index.js");
+        const attemptsJson = JSON.stringify(sourceAttempts);
+        await dbRun2(
+            `UPDATE tests SET is_review=1, review_source_test_id=?, review_origin_attempt_ids=?, review_strategy=? WHERE id=?`,
+            [baseTestId || null, attemptsJson, strategy, test.id]
         );
         const updated = await testRepo.findById(test.id);
         res.status(201).json({

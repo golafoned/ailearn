@@ -1,116 +1,62 @@
-import { getDb } from "../db/index.js";
-
-function row(res) {
-    if (!res || !res.length) return undefined;
-    const cols = res[0].columns;
-    const v = res[0].values[0];
-    if (!v) return undefined;
-    const o = {};
-    cols.forEach((c, i) => (o[c] = v[i]));
-    return o;
-}
+import { queryOne, queryAll, run } from "../db/index.js";
 
 export class TestAttemptRepository {
     async create(att) {
-        const db = await getDb();
-        const participant = (att.participant_name || "Participant").replace(
-            /'/g,
-            "''"
-        );
-        const displayName = att.display_name
-            ? `'${att.display_name.replace(/'/g, "''")}'`
-            : "NULL";
-        db.exec(
-            `INSERT INTO test_attempts (id, test_id, user_id, participant_name, display_name) VALUES ('${
-                att.id
-            }','${att.test_id}',${
-                att.user_id ? `'${att.user_id}'` : "NULL"
-            },'${participant}',${displayName});`
+        const participant = att.participant_name || "Participant";
+        await run(
+            `INSERT INTO test_attempts (id, test_id, user_id, participant_name, display_name) VALUES (?, ?, ?, ?, ?)`,
+            [att.id, att.test_id, att.user_id || null, participant, att.display_name || null]
         );
         return this.findById(att.id);
     }
+
     async findById(id) {
-        const db = await getDb();
-        return row(
-            db.exec(`SELECT * FROM test_attempts WHERE id='${id}' LIMIT 1;`)
-        );
+        return queryOne(`SELECT * FROM test_attempts WHERE id=? LIMIT 1`, [id]);
     }
+
     async submit(id, answers_json, score) {
-        const db = await getDb();
-        const answers = JSON.stringify(answers_json).replace(/'/g, "''");
-        db.exec(
-            `UPDATE test_attempts SET submitted_at=datetime('now'), answers_json='${answers}', score=${
-                score == null ? "NULL" : score
-            } WHERE id='${id}';`
+        await run(
+            `UPDATE test_attempts SET submitted_at=datetime('now'), answers_json=?, score=? WHERE id=?`,
+            [JSON.stringify(answers_json), score == null ? null : score, id]
         );
         return this.findById(id);
     }
+
     async listByTest(testId) {
-        const db = await getDb();
-        const res = db.exec(
-            `SELECT * FROM test_attempts WHERE test_id='${testId}' ORDER BY (score IS NULL) ASC, score DESC, started_at ASC;`
+        return queryAll(
+            `SELECT * FROM test_attempts WHERE test_id=? ORDER BY (score IS NULL) ASC, score DESC, started_at ASC`,
+            [testId]
         );
-        if (!res.length) return [];
-        const cols = res[0].columns;
-        return res[0].values.map((v) => {
-            const o = {};
-            cols.forEach((c, i) => (o[c] = v[i]));
-            return o;
-        });
-    }
-    async listByUser(userId) {
-        const db = await getDb();
-        const res = db.exec(
-            `SELECT a.*, t.code as test_code, t.title as test_title FROM test_attempts a LEFT JOIN tests t ON t.id=a.test_id WHERE a.user_id='${userId}' ORDER BY a.started_at DESC;`
-        );
-        if (!res.length) return [];
-        const cols = res[0].columns;
-        return res[0].values.map((v) => {
-            const o = {};
-            cols.forEach((c, i) => (o[c] = v[i]));
-            return o;
-        });
-    }
-    async listByTestAndUser(testId, userId) {
-        const db = await getDb();
-        const res = db.exec(
-            `SELECT * FROM test_attempts WHERE test_id='${testId}' AND user_id='${userId}' AND submitted_at IS NOT NULL ORDER BY submitted_at DESC LIMIT 50;`
-        );
-        if (!res.length) return [];
-        const cols = res[0].columns;
-        return res[0].values.map((v) => {
-            const o = {};
-            cols.forEach((c, i) => (o[c] = v[i]));
-            return o;
-        });
-    }
-    async listWrongAnswersForUser({ userId, limit = 100 }) {
-        const db = await getDb();
-        const res = db.exec(`SELECT taa.* FROM test_attempt_answers taa 
-            INNER JOIN test_attempts ta ON ta.id=taa.attempt_id 
-            WHERE ta.user_id='${userId}' AND taa.is_correct=0 
-            ORDER BY ta.submitted_at DESC LIMIT ${limit};`);
-        if (!res.length) return [];
-        const cols = res[0].columns;
-        return res[0].values.map((v) => {
-            const o = {};
-            cols.forEach((c, i) => (o[c] = v[i]));
-            return o;
-        });
     }
 
-    // List attempts for a specific concept by checking tests whose concepts_json contains the concept
-    async listByConcept(
-        userId,
-        conceptName,
-        { includeInProgress = true } = {}
-    ) {
-        const db = await getDb();
-        const safeConcept = conceptName.replace(/'/g, "''");
-        const submittedFilter = includeInProgress
-            ? "1=1"
-            : "ta.submitted_at IS NOT NULL";
-        const res = db.exec(`SELECT 
+    async listByUser(userId) {
+        return queryAll(
+            `SELECT a.*, t.code as test_code, t.title as test_title FROM test_attempts a LEFT JOIN tests t ON t.id=a.test_id WHERE a.user_id=? ORDER BY a.started_at DESC`,
+            [userId]
+        );
+    }
+
+    async listByTestAndUser(testId, userId) {
+        return queryAll(
+            `SELECT * FROM test_attempts WHERE test_id=? AND user_id=? AND submitted_at IS NOT NULL ORDER BY submitted_at DESC LIMIT 50`,
+            [testId, userId]
+        );
+    }
+
+    async listWrongAnswersForUser({ userId, limit = 100 }) {
+        return queryAll(
+            `SELECT taa.* FROM test_attempt_answers taa 
+            INNER JOIN test_attempts ta ON ta.id=taa.attempt_id 
+            WHERE ta.user_id=? AND taa.is_correct=0 
+            ORDER BY ta.submitted_at DESC LIMIT ?`,
+            [userId, limit]
+        );
+    }
+
+    async listByConcept(userId, conceptName, { includeInProgress = true } = {}) {
+        const submittedFilter = includeInProgress ? "1=1" : "ta.submitted_at IS NOT NULL";
+        return queryAll(
+            `SELECT 
                 ta.id as attempt_id,
                 ta.test_id,
                 ta.score,
@@ -123,56 +69,34 @@ export class TestAttemptRepository {
             FROM test_attempts ta
             INNER JOIN tests t ON t.id = ta.test_id
             LEFT JOIN test_attempt_answers taa ON taa.attempt_id = ta.id
-            WHERE ta.user_id='${userId}' 
+            WHERE ta.user_id=? 
               AND ${submittedFilter}
-          AND (
-              (t.concepts_json IS NOT NULL AND t.concepts_json LIKE '%"${safeConcept}"%')
-             OR (t.concepts_json IS NULL AND t.params_json LIKE '%"concepts":[%"${safeConcept}"%')
-          )
+              AND (
+                  (t.concepts_json IS NOT NULL AND t.concepts_json LIKE '%' || ? || '%')
+                 OR (t.concepts_json IS NULL AND t.params_json LIKE '%' || ? || '%')
+              )
             GROUP BY ta.id, ta.test_id, t.code, t.title, ta.score, ta.submitted_at, ta.started_at
-            ORDER BY COALESCE(ta.submitted_at, ta.started_at) DESC;`);
-        if (!res.length) return [];
-        const cols = res[0].columns;
-        return res[0].values.map((v) => {
-            const o = {};
-            cols.forEach((c, i) => (o[c] = v[i]));
-            o.status = o.submitted_at ? "completed" : "in_progress";
-            return o;
-        });
+            ORDER BY COALESCE(ta.submitted_at, ta.started_at) DESC`,
+            [userId, conceptName, conceptName]
+        ).then(rows => rows.map(o => ({ ...o, status: o.submitted_at ? "completed" : "in_progress" })));
     }
 }
 
 export class AttemptAnswersRepository {
     async bulkInsert(attemptId, answers) {
         if (!answers?.length) return;
-        const db = await getDb();
-        const values = answers
-            .map(
-                (a) =>
-                    `('${a.id}','${attemptId}','${
-                        a.question_id
-                    }','${a.question_text.replace(/'/g, "''")}','${
-                        a.correct_answer?.replace(/'/g, "''") || ""
-                    }','${a.user_answer?.replace(/'/g, "''") || ""}',${
-                        a.is_correct ? 1 : 0
-                    })`
-            )
-            .join(",");
-        db.exec(
-            `INSERT INTO test_attempt_answers (id, attempt_id, question_id, question_text, correct_answer, user_answer, is_correct) VALUES ${values};`
-        );
+        for (const a of answers) {
+            await run(
+                `INSERT INTO test_attempt_answers (id, attempt_id, question_id, question_text, correct_answer, user_answer, is_correct) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                [a.id, attemptId, a.question_id, a.question_text, a.correct_answer || "", a.user_answer || "", a.is_correct ? 1 : 0]
+            );
+        }
     }
+
     async listForAttempt(attemptId) {
-        const db = await getDb();
-        const res = db.exec(
-            `SELECT * FROM test_attempt_answers WHERE attempt_id='${attemptId}' ORDER BY id;`
+        return queryAll(
+            `SELECT * FROM test_attempt_answers WHERE attempt_id=? ORDER BY id`,
+            [attemptId]
         );
-        if (!res.length) return [];
-        const cols = res[0].columns;
-        return res[0].values.map((v) => {
-            const o = {};
-            cols.forEach((c, i) => (o[c] = v[i]));
-            return o;
-        });
     }
 }

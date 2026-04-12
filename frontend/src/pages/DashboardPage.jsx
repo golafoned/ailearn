@@ -267,7 +267,7 @@ export function DashboardPage() {
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                const url = `${window.location.origin}/test/${t.code}`;
+                                                const url = `${window.location.origin}/code/${t.code}`;
                                                 navigator.clipboard.writeText(
                                                     url
                                                 );

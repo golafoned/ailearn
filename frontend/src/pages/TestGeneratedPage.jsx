@@ -68,6 +68,7 @@ export function TestGeneratedPage() {
                     )}
                 </div>
             )}
+            {!isAttemptResult && (
             <div className="bg-white rounded-xl p-8 border border-gray-200 shadow-sm">
                 <label
                     htmlFor="test-link"
@@ -113,6 +114,7 @@ export function TestGeneratedPage() {
                     </div>
                 </div>
             </div>
+            )}
             {isAttemptResult && participantQuestions.length > 0 && (
                 <div className="mt-10 text-left">
                     <h2 className="text-xl font-semibold mb-4">Your Answers</h2>
@@ -165,13 +167,29 @@ export function TestGeneratedPage() {
                     </ul>
                 </div>
             )}
-            <div className="mt-8 flex gap-4 justify-center">
+            <div className="mt-8 flex gap-4 justify-center flex-wrap">
                 {isAttemptResult && attempt?.id && (
                     <Button
                         onClick={() => navigate(`/attempts/${attempt.id}`)}
                         className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
                     >
                         📝 View Detailed Results & Hints
+                    </Button>
+                )}
+                {!isAttemptResult && previewTest && (
+                    <Button
+                        onClick={() => navigate("/preview")}
+                        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                    >
+                        👁️ Preview Test
+                    </Button>
+                )}
+                {!isAttemptResult && (
+                    <Button
+                        onClick={() => navigate(`/tests/${previewTest?.id || "unknown"}/analytics`)}
+                        variant="secondary"
+                    >
+                        📊 View Analytics
                     </Button>
                 )}
                 <Button

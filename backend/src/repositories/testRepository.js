@@ -1,132 +1,75 @@
-import { getDb } from "../db/index.js";
-
-function row(res) {
-    if (!res || !res.length) return undefined;
-    const cols = res[0].columns;
-    const v = res[0].values[0];
-    if (!v) return undefined;
-    const o = {};
-    cols.forEach((c, i) => (o[c] = v[i]));
-    return o;
-}
+import { queryOne, queryAll, run } from "../db/index.js";
 
 export class TestRepository {
     async create(test) {
-        const db = await getDb();
-        const jsonParams = JSON.stringify(test.params_json);
-        const jsonQuestions = JSON.stringify(test.questions_json);
-        // Support newer adaptive learning columns if present (graceful NULL otherwise)
         const conceptsJson = Array.isArray(test.concepts_json)
-            ? `'${JSON.stringify(test.concepts_json).replace(/'/g, "''")}'`
-            : test.concepts_json
-            ? `'${String(test.concepts_json).replace(/'/g, "''")}'`
-            : "NULL";
-        const adaptiveMode = test.adaptive_mode
-            ? 1
-            : test.adaptiveMode
-            ? 1
-            : test.adaptive_mode === 0
-            ? 0
-            : test.adaptiveMode === 0
-            ? 0
-            : test.adaptive_mode || test.adaptiveMode
-            ? 1
-            : 0; // normalize various flags
+            ? JSON.stringify(test.concepts_json)
+            : test.concepts_json || null;
+        const adaptiveMode = test.adaptive_mode || test.adaptiveMode ? 1 : 0;
         const difficultyDist = test.difficulty_distribution
-            ? `'${JSON.stringify(test.difficulty_distribution).replace(
-                  /'/g,
-                  "''"
-              )}'`
-            : "NULL";
+            ? JSON.stringify(test.difficulty_distribution)
+            : null;
 
-        db.exec(`INSERT INTO tests (
+        await run(`INSERT INTO tests (
             id, code, title, source_filename, source_text, model, params_json, questions_json, expires_at, time_limit_seconds, created_by,
             is_review, review_source_test_id, review_origin_attempt_ids, review_strategy,
             concepts_json, adaptive_mode, difficulty_distribution
-        ) VALUES (
-            '${test.id}','${test.code}','${test.title.replace(/'/g, "''")}',${
-            test.source_filename
-                ? `'${test.source_filename.replace(/'/g, "''")}'`
-                : "NULL"
-        },'${test.source_text.replace(/'/g, "''")}','${
-            test.model
-        }','${jsonParams.replace(/'/g, "''")}','${jsonQuestions.replace(
-            /'/g,
-            "''"
-        )}','${test.expires_at}',${test.time_limit_seconds},${
-            test.created_by ? `'${test.created_by}'` : "NULL"
-        },${test.is_review ? 1 : 0},${
-            test.review_source_test_id
-                ? `'${test.review_source_test_id}'`
-                : "NULL"
-        },${
-            test.review_origin_attempt_ids
-                ? `'${JSON.stringify(test.review_origin_attempt_ids).replace(
-                      /'/g,
-                      "''"
-                  )}'`
-                : "NULL"
-        },${test.review_strategy ? `'${test.review_strategy}'` : "NULL"},
-            ${conceptsJson}, ${adaptiveMode}, ${difficultyDist}
-        );`);
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
+            test.id,
+            test.code,
+            test.title,
+            test.source_filename || null,
+            test.source_text,
+            test.model,
+            JSON.stringify(test.params_json),
+            JSON.stringify(test.questions_json),
+            test.expires_at,
+            test.time_limit_seconds,
+            test.created_by || null,
+            test.is_review ? 1 : 0,
+            test.review_source_test_id || null,
+            test.review_origin_attempt_ids ? JSON.stringify(test.review_origin_attempt_ids) : null,
+            test.review_strategy || null,
+            conceptsJson,
+            adaptiveMode,
+            difficultyDist,
+        ]);
         return this.findById(test.id);
     }
+
     async findByCode(code) {
-        const db = await getDb();
-        return row(
-            db.exec(`SELECT * FROM tests WHERE code='${code}' LIMIT 1;`)
-        );
+        return queryOne(`SELECT * FROM tests WHERE code=? LIMIT 1`, [code]);
     }
+
     async findById(id) {
-        const db = await getDb();
-        return row(db.exec(`SELECT * FROM tests WHERE id='${id}' LIMIT 1;`));
+        return queryOne(`SELECT * FROM tests WHERE id=? LIMIT 1`, [id]);
     }
+
     async listByOwner(userId) {
-        const db = await getDb();
-        const res = db.exec(
-            `SELECT * FROM tests WHERE created_by='${userId}' ORDER BY created_at DESC;`
-        );
-        if (!res.length) return [];
-        const cols = res[0].columns;
-        return res[0].values.map((v) => {
-            const o = {};
-            cols.forEach((c, i) => (o[c] = v[i]));
-            return o;
-        });
+        return queryAll(`SELECT * FROM tests WHERE created_by=? ORDER BY created_at DESC`, [userId]);
     }
+
     async listByOwnerPaged(userId, { page, pageSize }) {
-        const db = await getDb();
         const offset = (page - 1) * pageSize;
-        const res = db.exec(
-            `SELECT * FROM tests WHERE created_by='${userId}' ORDER BY created_at DESC LIMIT ${pageSize} OFFSET ${offset};`
+        const items = await queryAll(
+            `SELECT * FROM tests WHERE created_by=? ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+            [userId, pageSize, offset]
         );
-        const countRes = db.exec(
-            `SELECT COUNT(*) as c FROM tests WHERE created_by='${userId}';`
+        const countRow = await queryOne(
+            `SELECT COUNT(*) as c FROM tests WHERE created_by=?`,
+            [userId]
         );
-        const total = countRes.length ? countRes[0].values[0][0] : 0;
-        if (!res.length) return { items: [], total };
-        const cols = res[0].columns;
-        const items = res[0].values.map((v) => {
-            const o = {};
-            cols.forEach((c, i) => (o[c] = v[i]));
-            return o;
-        });
-        return { items, total };
+        return { items, total: countRow?.c || 0 };
     }
+
     async createReviewTest(data) {
         return this.create({ ...data, is_review: true });
     }
+
     async listReviewByUser(userId) {
-        const db = await getDb();
-        const res = db.exec(
-            `SELECT * FROM tests WHERE created_by='${userId}' AND is_review=1 ORDER BY created_at DESC;`
+        return queryAll(
+            `SELECT * FROM tests WHERE created_by=? AND is_review=1 ORDER BY created_at DESC`,
+            [userId]
         );
-        if (!res.length) return [];
-        const cols = res[0].columns;
-        return res[0].values.map((v) => {
-            const o = {};
-            cols.forEach((c, i) => (o[c] = v[i]));
-            return o;
-        });
     }
 }

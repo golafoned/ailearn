@@ -85,7 +85,7 @@ export function TestTakingPage() {
         () =>
             Object.entries(answers).map(([questionId, answer]) => ({
                 questionId,
-                answer,
+                answer: Array.isArray(answer) ? answer.join(", ") : answer,
             })),
         [answers]
     );
@@ -175,8 +175,7 @@ export function TestTakingPage() {
                 const newArray = currentArray.includes(value)
                     ? currentArray.filter((v) => v !== value)
                     : [...currentArray, value];
-                // Sort alphabetically for consistent comparison
-                return { ...prev, [qId]: newArray.sort().join(", ") };
+                return { ...prev, [qId]: newArray.sort() };
             });
         } else {
             // Single select - replace value
@@ -333,10 +332,8 @@ export function TestTakingPage() {
                                 {options.map((opt) => {
                                     const currentAnswer = answers[question.id];
                                     const checked = isMultipleSelect
-                                        ? currentAnswer &&
-                                          currentAnswer
-                                              .split(", ")
-                                              .includes(opt.value)
+                                        ? Array.isArray(currentAnswer) &&
+                                          currentAnswer.includes(opt.value)
                                         : currentAnswer === opt.value;
                                     const isTrueFalse =
                                         questionType === "true/false" ||

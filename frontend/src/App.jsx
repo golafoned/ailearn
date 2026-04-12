@@ -17,6 +17,8 @@ import { PracticeSessionCreatePage } from "./pages/PracticeSessionCreatePage";
 import { AchievementsPage } from "./pages/AchievementsPage";
 import { SessionResultsPage } from "./pages/SessionResultsPage";
 import { ConceptDetailPage } from "./pages/ConceptDetailPage";
+import { FlashcardsPage } from "./pages/FlashcardsPage";
+import { FlashcardDeckPage } from "./pages/FlashcardDeckPage";
 import { useAuth } from "./contexts/AuthContext";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
@@ -144,6 +146,22 @@ export default function App() {
                         element={
                             <PrivateRoute>
                                 <ConceptDetailPage />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/flashcards"
+                        element={
+                            <PrivateRoute>
+                                <FlashcardsPage />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/flashcards/:deckId"
+                        element={
+                            <PrivateRoute>
+                                <FlashcardDeckPage />
                             </PrivateRoute>
                         }
                     />

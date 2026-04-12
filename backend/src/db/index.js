@@ -37,6 +37,42 @@ export async function getDb() {
     return db;
 }
 
+// Parameterized query helpers — use these instead of string interpolation
+
+/** Run a SELECT and return the first row as an object, or undefined. */
+export async function queryOne(sql, params = []) {
+    if (!initialized) await init();
+    const stmt = db.prepare(sql);
+    stmt.bind(params);
+    let result;
+    if (stmt.step()) {
+        result = stmt.getAsObject();
+    }
+    stmt.free();
+    return result;
+}
+
+/** Run a SELECT and return all rows as an array of objects. */
+export async function queryAll(sql, params = []) {
+    if (!initialized) await init();
+    const stmt = db.prepare(sql);
+    stmt.bind(params);
+    const rows = [];
+    while (stmt.step()) {
+        rows.push(stmt.getAsObject());
+    }
+    stmt.free();
+    return rows;
+}
+
+/** Run an INSERT / UPDATE / DELETE with parameters. */
+export async function run(sql, params = []) {
+    if (!initialized) await init();
+    const stmt = db.prepare(sql);
+    stmt.run(params);
+    stmt.free();
+}
+
 export async function saveDb() {
     if (!initialized) return;
     const dbPath = path.resolve(env.dbFile);
