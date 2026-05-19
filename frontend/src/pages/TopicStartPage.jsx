@@ -137,7 +137,7 @@ export function TopicStartPage() {
     };
 
     return (
-        <div className="max-w-3xl mx-auto px-4 py-24 sm:py-28">
+        <div className="max-w-3xl mx-auto page-shell">
             {/* Header */}
             <div className="text-center mb-10">
                 <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-lg mb-5">

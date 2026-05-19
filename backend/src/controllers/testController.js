@@ -507,6 +507,8 @@ export async function getAttemptDetail(req, res, next) {
         res.json({
             attemptId: attempt.id,
             testId: attempt.test_id,
+            testCode: test.code,
+            testTitle: test.title,
             score: attempt.score,
             totalQuestions: allQuestions.length,
             answered: answers.length,
@@ -554,6 +556,8 @@ export async function getOwnerAttemptDetail(req, res, next) {
         res.json({
             attemptId: attempt.id,
             testId: attempt.test_id,
+            testCode: test.code,
+            testTitle: test.title,
             participantName: attempt.participant_name,
             displayName: attempt.display_name,
             score: attempt.score,

@@ -11,6 +11,20 @@ body,
 body {
     @apply bg-gray-50 text-gray-900 antialiased;
 }
+
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+.page-shell {
+    @apply px-4 pt-8 pb-16 sm:pt-10 sm:pb-20;
+}
+
 a {
     @apply text-blue-600 hover:text-blue-700 underline-offset-2;
 }

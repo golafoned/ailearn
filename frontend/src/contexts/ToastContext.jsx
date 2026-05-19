@@ -4,6 +4,7 @@ import React, {
     useState,
     useCallback,
     useRef,
+    useEffect,
 } from "react";
 
 const ToastContext = createContext(null);
@@ -12,6 +13,13 @@ let idCounter = 0;
 export function ToastProvider({ children }) {
     const [toasts, setToasts] = useState([]);
     const timeoutsRef = useRef({});
+
+    useEffect(() => {
+        return () => {
+            Object.values(timeoutsRef.current).forEach(clearTimeout);
+            timeoutsRef.current = {};
+        };
+    }, []);
 
     const remove = useCallback((id) => {
         setToasts((t) => t.filter((x) => x.id !== id));
@@ -26,16 +34,28 @@ export function ToastProvider({ children }) {
             if (!message) return;
             const id = ++idCounter;
             const toast = { id, message, type };
-            setToasts((t) => [...t, toast]);
+            setToasts((current) => {
+                const next = [...current, toast];
+                const overflow = Math.max(0, next.length - 3);
+                if (overflow > 0) {
+                    next.slice(0, overflow).forEach((oldToast) => {
+                        if (timeoutsRef.current[oldToast.id]) {
+                            clearTimeout(timeoutsRef.current[oldToast.id]);
+                            delete timeoutsRef.current[oldToast.id];
+                        }
+                    });
+                }
+                return next.slice(overflow);
+            });
             if (duration > 0) {
                 timeoutsRef.current[id] = setTimeout(
                     () => remove(id),
-                    duration
+                    duration,
                 );
             }
             return id;
         },
-        [remove]
+        [remove],
     );
 
     const value = {
@@ -44,6 +64,7 @@ export function ToastProvider({ children }) {
         remove,
         success: (m, o) => push(m, { type: "success", ...o }),
         error: (m, o) => push(m, { type: "error", ...o }),
+        info: (m, o) => push(m, { type: "info", ...o }),
     };
 
     return (
@@ -54,9 +75,8 @@ export function ToastProvider({ children }) {
     );
 }
 
-// Custom hook for consuming the toast context
+// eslint-disable-next-line react-refresh/only-export-components
 export function useToast() {
-    // eslint-disable-line
     const ctx = useContext(ToastContext);
     if (!ctx) throw new Error("useToast must be used inside ToastProvider");
     return ctx;
@@ -64,7 +84,11 @@ export function useToast() {
 
 function ToastViewport({ toasts, remove }) {
     return (
-        <div className="fixed z-50 top-4 right-4 w-80 space-y-3">
+        <div
+            className="fixed z-50 top-24 left-4 right-4 sm:left-auto sm:right-4 sm:w-80 space-y-3"
+            aria-live="polite"
+            aria-relevant="additions removals"
+        >
             {toasts.map((t) => (
                 <div
                     key={t.id}
@@ -72,8 +96,8 @@ function ToastViewport({ toasts, remove }) {
                         t.type === "success"
                             ? "border-green-200"
                             : t.type === "error"
-                            ? "border-red-200"
-                            : "border-gray-200"
+                              ? "border-red-200"
+                              : "border-gray-200"
                     }`}
                 >
                     <div
@@ -81,8 +105,8 @@ function ToastViewport({ toasts, remove }) {
                             t.type === "success"
                                 ? "bg-green-500"
                                 : t.type === "error"
-                                ? "bg-red-500"
-                                : "bg-blue-500"
+                                  ? "bg-red-500"
+                                  : "bg-blue-500"
                         }`}
                     ></div>
                     <div className="flex-1 text-gray-800 whitespace-pre-line">

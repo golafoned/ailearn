@@ -29,6 +29,14 @@ export function FlashcardDeckPage() {
     const [genCount, setGenCount] = useState(10);
     const [generating, setGenerating] = useState(false);
 
+    const resetStudyState = () => {
+        setStudyCards([]);
+        setStudyIndex(0);
+        setShowBack(false);
+        setStudyComplete(false);
+        setStudyStats({ correct: 0, total: 0 });
+    };
+
     const fetchDeck = useCallback(async () => {
         try {
             const data = await apiFetch(`/api/v1/flashcards/decks/${deckId}`);
@@ -81,8 +89,7 @@ export function FlashcardDeckPage() {
 
     const startStudy = async (mode = "due") => {
         setStudyLoading(true);
-        setStudyComplete(false);
-        setStudyStats({ correct: 0, total: 0 });
+        resetStudyState();
         try {
             const data = await apiFetch(
                 `/api/v1/flashcards/decks/${deckId}/study?limit=50&mode=${mode}`,
@@ -129,6 +136,7 @@ export function FlashcardDeckPage() {
                 setShowBack(false);
             } else {
                 setStudyComplete(true);
+                await fetchDeck();
             }
         } catch {
             toast.error("Failed to save review");
@@ -160,7 +168,7 @@ export function FlashcardDeckPage() {
 
     if (loading) {
         return (
-            <div className="max-w-4xl mx-auto px-4 py-24">
+            <div className="max-w-4xl mx-auto page-shell">
                 <div className="text-center py-12">
                     <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
                     <p className="text-gray-600">Loading deck...</p>
@@ -174,7 +182,7 @@ export function FlashcardDeckPage() {
     const currentStudyCard = studyCards[studyIndex];
 
     return (
-        <div className="max-w-4xl mx-auto px-4 py-24 sm:py-32">
+        <div className="max-w-4xl mx-auto page-shell">
             {/* Header */}
             <div className="flex items-center gap-3 mb-2">
                 <button
@@ -184,7 +192,7 @@ export function FlashcardDeckPage() {
                     ← Back
                 </button>
             </div>
-            <div className="flex items-center justify-between mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-900">
                         {deck.title}
@@ -196,7 +204,7 @@ export function FlashcardDeckPage() {
                         {deck.cardCount} cards • {deck.dueCount} due for review
                     </p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                     {deck.dueCount > 0 && (
                         <Button
                             onClick={() => startStudy("due")}
@@ -230,7 +238,7 @@ export function FlashcardDeckPage() {
                         onClick={() =>
                             t.key === "study"
                                 ? startStudy("all")
-                                : setTab(t.key)
+                                : (resetStudyState(), setTab(t.key))
                         }
                         className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${
                             tab === t.key
@@ -256,10 +264,14 @@ export function FlashcardDeckPage() {
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <label
+                                    htmlFor="new-card-front"
+                                    className="block text-sm font-medium text-gray-700 mb-1"
+                                >
                                     Front
                                 </label>
                                 <textarea
+                                    id="new-card-front"
                                     value={newFront}
                                     onChange={(e) =>
                                         setNewFront(e.target.value)
@@ -270,10 +282,14 @@ export function FlashcardDeckPage() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <label
+                                    htmlFor="new-card-back"
+                                    className="block text-sm font-medium text-gray-700 mb-1"
+                                >
                                     Back
                                 </label>
                                 <textarea
+                                    id="new-card-back"
                                     value={newBack}
                                     onChange={(e) => setNewBack(e.target.value)}
                                     placeholder="Answer or explanation"
@@ -334,6 +350,7 @@ export function FlashcardDeckPage() {
                                             }
                                             className="text-gray-400 hover:text-red-500 ml-3 p-1"
                                             title="Delete card"
+                                            aria-label={`Delete card ${idx + 1}`}
                                         >
                                             ✕
                                         </button>
@@ -397,9 +414,11 @@ export function FlashcardDeckPage() {
                                 Card {studyIndex + 1} of {studyCards.length}
                             </div>
                             {/* Flashcard */}
-                            <div
-                                className="bg-white rounded-2xl border-2 border-gray-200 shadow-lg p-12 min-h-[300px] flex flex-col items-center justify-center cursor-pointer hover:shadow-xl transition-shadow"
+                            <button
+                                type="button"
+                                className="w-full bg-white rounded-2xl border-2 border-gray-200 shadow-lg p-8 sm:p-12 min-h-[300px] flex flex-col items-center justify-center cursor-pointer hover:shadow-xl transition-shadow"
                                 onClick={() => setShowBack(!showBack)}
+                                aria-pressed={showBack}
                             >
                                 {!showBack ? (
                                     <>
@@ -423,7 +442,7 @@ export function FlashcardDeckPage() {
                                         </p>
                                     </>
                                 )}
-                            </div>
+                            </button>
 
                             {/* Review buttons (shown after revealing) */}
                             {showBack && (
@@ -490,10 +509,14 @@ export function FlashcardDeckPage() {
                         </p>
                         <form onSubmit={handleGenerate} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <label
+                                    htmlFor="generate-topic"
+                                    className="block text-sm font-medium text-gray-700 mb-1"
+                                >
                                     Topic *
                                 </label>
                                 <input
+                                    id="generate-topic"
                                     type="text"
                                     value={genTopic}
                                     onChange={(e) =>
@@ -505,10 +528,14 @@ export function FlashcardDeckPage() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <label
+                                    htmlFor="generate-count"
+                                    className="block text-sm font-medium text-gray-700 mb-1"
+                                >
                                     Number of cards: {genCount}
                                 </label>
                                 <input
+                                    id="generate-count"
                                     type="range"
                                     min={5}
                                     max={30}

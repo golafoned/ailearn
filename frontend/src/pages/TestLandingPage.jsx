@@ -25,15 +25,20 @@ export function TestLandingPage() {
     const { isAuthenticated, user } = useAuth();
     const toast = useToast();
     const autoStartedRef = useRef(false);
+    const lastFetchedCodeRef = useRef(null);
     const [testStatusCode, setTestStatusCode] = useState(null); // e.g., TEST_EXPIRED, TEST_CLOSED
 
     // Clear stale attempt and test data when navigating to a new test code
     useEffect(() => {
+        const normalizedCode = code?.toUpperCase();
+        if (!normalizedCode || lastFetchedCodeRef.current === normalizedCode)
+            return;
+        lastFetchedCodeRef.current = normalizedCode;
         setAttempt(null);
         autoStartedRef.current = false;
         setTestStatusCode(null);
         setStartError(null);
-        if (code) fetchTestByCode(code.toUpperCase());
+        fetchTestByCode(normalizedCode).catch(() => {});
     }, [code, fetchTestByCode, setAttempt]);
 
     const onStart = async (e) => {
@@ -60,14 +65,13 @@ export function TestLandingPage() {
         } catch (e) {
             // Attempt to read backend code from generic error message (context stores only message currently)
             const msg = (e && e.message) || "Unable to start attempt";
-            if (/TEST_EXPIRED/.test(msg)) {
+            const code = e?.code;
+            if (code === "TEST_EXPIRED" || /TEST_EXPIRED/.test(msg)) {
                 setTestStatusCode("TEST_EXPIRED");
                 setStartError("This test has expired.");
-                toast.error("This test has expired.");
-            } else if (/TEST_CLOSED/.test(msg)) {
+            } else if (code === "TEST_CLOSED" || /TEST_CLOSED/.test(msg)) {
                 setTestStatusCode("TEST_CLOSED");
                 setStartError("This test is closed.");
-                toast.error("This test is closed.");
             } else {
                 setStartError("Unable to start attempt");
                 toast.error("Unable to start attempt");
@@ -108,7 +112,7 @@ export function TestLandingPage() {
     };
 
     return (
-        <div className="max-w-xl mx-auto px-4 py-24 sm:py-32">
+        <div className="max-w-xl mx-auto page-shell">
             <div className="bg-white p-8 rounded-xl border border-gray-200 shadow-sm">
                 {loading && !currentTest && (
                     <p className="text-sm text-gray-500">Loading test...</p>

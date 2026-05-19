@@ -26,7 +26,7 @@ export function AchievementsPage() {
 
     if (loading && !achievements) {
         return (
-            <div className="max-w-7xl mx-auto px-4 py-24">
+            <div className="max-w-7xl mx-auto page-shell">
                 <div className="text-center py-12">
                     <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
                     <p className="text-gray-600">Loading achievements...</p>
@@ -48,7 +48,7 @@ export function AchievementsPage() {
     const filteredInProgress = filterByCategory(inProgress);
 
     return (
-        <div className="max-w-6xl mx-auto px-4 py-24 sm:py-32">
+        <div className="max-w-6xl mx-auto page-shell">
             {/* Header */}
             <div className="flex items-center gap-3 mb-8">
                 <button

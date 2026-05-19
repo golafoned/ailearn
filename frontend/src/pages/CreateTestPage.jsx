@@ -182,12 +182,13 @@ export function CreateTestPage() {
     };
 
     return (
-        <div className="max-w-3xl mx-auto px-4 py-24 sm:py-32">
+        <div className="max-w-3xl mx-auto page-shell">
             <div className="flex items-center gap-3 mb-8">
                 <button
                     onClick={() => navigate(-1)}
                     className="text-gray-500 hover:text-gray-700 transition"
                     title="Go back"
+                    aria-label="Go back"
                 >
                     <span className="text-xl">←</span>
                 </button>
@@ -234,10 +235,14 @@ export function CreateTestPage() {
                 <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
                     {sourceMode === "topic" ? (
                         <div>
-                            <label className="block mb-2 text-sm font-medium text-gray-900">
+                            <label
+                                htmlFor="test-topic"
+                                className="block mb-2 text-sm font-medium text-gray-900"
+                            >
                                 What do you want to test? *
                             </label>
                             <textarea
+                                id="test-topic"
                                 value={topic}
                                 onChange={(e) => setTopic(e.target.value)}
                                 placeholder="E.g., CSS Flexbox and Grid layout, Cell division in Biology, or The concept of OOP in Python..."
@@ -278,7 +283,7 @@ export function CreateTestPage() {
                                                 or drag and drop
                                             </p>
                                             <p className="text-xs text-blue-600 font-medium">
-                                                TXT only (MAX. 10MB)
+                                                TXT, MD, or PDF (MAX. 10MB)
                                             </p>
                                         </>
                                     )}
@@ -298,13 +303,17 @@ export function CreateTestPage() {
                 {/* Grid for Parameters */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-gray-100">
                     <div>
-                        <label className="block mb-2 text-sm font-medium text-gray-700">
+                        <label
+                            htmlFor="test-question-count"
+                            className="block mb-2 text-sm font-medium text-gray-700"
+                        >
                             Number of Questions:{" "}
                             <span className="text-blue-600 font-bold">
                                 {questions}
                             </span>
                         </label>
                         <input
+                            id="test-question-count"
                             type="range"
                             min="5"
                             max="50"
@@ -323,10 +332,14 @@ export function CreateTestPage() {
                     </div>
 
                     <div>
-                        <label className="block mb-2 text-sm font-medium text-gray-700">
+                        <label
+                            htmlFor="test-difficulty"
+                            className="block mb-2 text-sm font-medium text-gray-700"
+                        >
                             Difficulty Level
                         </label>
                         <select
+                            id="test-difficulty"
                             value={difficulty}
                             onChange={(e) => setDifficulty(e.target.value)}
                             className="w-full border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm"
@@ -338,13 +351,17 @@ export function CreateTestPage() {
                     </div>
 
                     <div>
-                        <label className="block mb-2 text-sm font-medium text-gray-700">
+                        <label
+                            htmlFor="test-time-limit"
+                            className="block mb-2 text-sm font-medium text-gray-700"
+                        >
                             Time Limit:{" "}
                             <span className="text-blue-600 font-bold">
                                 {timeLimit} mins
                             </span>
                         </label>
                         <input
+                            id="test-time-limit"
                             type="range"
                             min="5"
                             max="120"
@@ -358,10 +375,14 @@ export function CreateTestPage() {
                     </div>
 
                     <div>
-                        <label className="block mb-2 text-sm font-medium text-gray-700">
+                        <label
+                            htmlFor="test-title"
+                            className="block mb-2 text-sm font-medium text-gray-700"
+                        >
                             Test Title (Optional)
                         </label>
                         <input
+                            id="test-title"
                             type="text"
                             value={title}
                             maxLength={120}
@@ -378,10 +399,14 @@ export function CreateTestPage() {
 
                 {/* Optional Instructions */}
                 <div>
-                    <label className="block mb-2 text-sm font-medium text-gray-700">
+                    <label
+                        htmlFor="test-instructions"
+                        className="block mb-2 text-sm font-medium text-gray-700"
+                    >
                         Special Instructions (Optional)
                     </label>
                     <input
+                        id="test-instructions"
                         type="text"
                         value={instructions}
                         onChange={(e) => setInstructions(e.target.value)}

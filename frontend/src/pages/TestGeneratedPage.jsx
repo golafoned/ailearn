@@ -28,7 +28,7 @@ export function TestGeneratedPage() {
     };
 
     return (
-        <div className="max-w-2xl mx-auto px-4 py-24 sm:py-32 text-center">
+        <div className="max-w-2xl mx-auto page-shell text-center">
             <div className="text-5xl mb-4">✅</div>
             <h1 className="text-3xl sm:text-4xl font-bold mb-4 text-gray-900">
                 Your Test is Ready!

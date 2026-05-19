@@ -68,7 +68,7 @@ export function FlashcardsPage() {
 
     if (loading) {
         return (
-            <div className="max-w-6xl mx-auto px-4 py-24">
+            <div className="max-w-6xl mx-auto page-shell">
                 <div className="text-center py-12">
                     <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
                     <p className="text-gray-600">Loading flashcards...</p>
@@ -78,7 +78,7 @@ export function FlashcardsPage() {
     }
 
     return (
-        <div className="max-w-6xl mx-auto px-4 py-24 sm:py-32">
+        <div className="max-w-6xl mx-auto page-shell">
             <div className="flex items-center justify-between mb-8">
                 <div>
                     <h1 className="text-4xl font-bold text-gray-900">
@@ -91,6 +91,7 @@ export function FlashcardsPage() {
                 <Button
                     onClick={() => setShowCreate(!showCreate)}
                     className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                    aria-expanded={showCreate}
                 >
                     + New Deck
                 </Button>
@@ -106,10 +107,14 @@ export function FlashcardsPage() {
                     </h2>
                     <div className="space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label
+                                htmlFor="deck-title"
+                                className="block text-sm font-medium text-gray-700 mb-1"
+                            >
                                 Title *
                             </label>
                             <input
+                                id="deck-title"
                                 type="text"
                                 value={newTitle}
                                 onChange={(e) => setNewTitle(e.target.value)}
@@ -119,10 +124,14 @@ export function FlashcardsPage() {
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label
+                                htmlFor="deck-description"
+                                className="block text-sm font-medium text-gray-700 mb-1"
+                            >
                                 Description
                             </label>
                             <input
+                                id="deck-description"
                                 type="text"
                                 value={newDescription}
                                 onChange={(e) =>
@@ -168,15 +177,22 @@ export function FlashcardsPage() {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {decks.map((deck) => (
-                        <div
+                        <article
                             key={deck.id}
-                            className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
-                            onClick={() => navigate(`/flashcards/${deck.id}`)}
+                            className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow group"
                         >
                             <div className="flex items-start justify-between mb-3">
-                                <h3 className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
-                                    {deck.title}
-                                </h3>
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        navigate(`/flashcards/${deck.id}`)
+                                    }
+                                    className="text-left flex-1"
+                                >
+                                    <h3 className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
+                                        {deck.title}
+                                    </h3>
+                                </button>
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();
@@ -184,6 +200,7 @@ export function FlashcardsPage() {
                                     }}
                                     className="text-gray-400 hover:text-red-500 transition-colors p-1"
                                     title="Delete deck"
+                                    aria-label={`Delete deck ${deck.title}`}
                                 >
                                     ✕
                                 </button>
@@ -193,7 +210,14 @@ export function FlashcardsPage() {
                                     {deck.description}
                                 </p>
                             )}
-                            <div className="flex items-center justify-between">
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    navigate(`/flashcards/${deck.id}`)
+                                }
+                                className="flex items-center justify-between w-full text-left"
+                                aria-label={`Open deck ${deck.title}`}
+                            >
                                 <span className="text-sm text-gray-500">
                                     {deck.cardCount || 0} cards
                                 </span>
@@ -204,8 +228,8 @@ export function FlashcardsPage() {
                                           ).toLocaleDateString()
                                         : ""}
                                 </span>
-                            </div>
-                        </div>
+                            </button>
+                        </article>
                     ))}
                 </div>
             )}

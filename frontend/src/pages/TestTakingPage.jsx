@@ -136,11 +136,15 @@ export function TestTakingPage() {
                 });
             } else {
                 // Regular test submission → student results page
-                await submitAttempt({
+                const submission = await submitAttempt({
                     attemptId: attempt.attemptId,
                     answers: buildAnswerArray(),
                 });
-                navigate("/results");
+                const resultAttemptId =
+                    submission?.attemptId || attempt.attemptId || attempt.id;
+                navigate(
+                    `/results?attemptId=${encodeURIComponent(resultAttemptId)}`,
+                );
             }
         } catch {
             setSubmitError("Submission failed");
@@ -152,6 +156,8 @@ export function TestTakingPage() {
         sessionId,
         submitAttempt,
         completeSession,
+        currentSession,
+        location.state,
         navigate,
         buildAnswerArray,
     ]);
@@ -223,7 +229,7 @@ export function TestTakingPage() {
     const answeredCount = Object.keys(answers).length;
 
     return (
-        <div className="max-w-4xl mx-auto px-4 py-20 sm:py-24">
+        <div className="max-w-4xl mx-auto px-4 pt-8 pb-16 sm:pt-10 sm:pb-20">
             <div className="bg-white rounded-xl border border-gray-200 shadow-xl overflow-hidden">
                 {/* Header */}
                 <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-5 text-white">
@@ -465,30 +471,17 @@ export function TestTakingPage() {
 
                 {/* Navigation */}
                 <div className="px-6 py-5 bg-gray-50 border-t border-gray-200">
-                    <div className="flex justify-between items-center">
-                        <Button
-                            variant="secondary"
-                            onClick={() =>
-                                setCurrentQuestionIndex((p) =>
-                                    Math.max(0, p - 1),
-                                )
-                            }
-                            disabled={currentQuestionIndex === 0}
-                            className="px-6"
-                        >
-                            ← Previous
-                        </Button>
-
-                        <div className="flex gap-2">
-                            {/* Quick navigation dots */}
-                            <div className="hidden sm:flex items-center gap-1">
+                    <div className="space-y-4">
+                        {/* Quick navigation dots */}
+                        <div className="hidden sm:block overflow-x-auto pb-1 no-scrollbar">
+                            <div className="inline-flex min-w-max items-center gap-1">
                                 {activeTest.questions.map((_, idx) => (
                                     <button
                                         key={idx}
                                         onClick={() =>
                                             setCurrentQuestionIndex(idx)
                                         }
-                                        className={`w-8 h-8 rounded-full text-xs font-semibold transition-all ${
+                                        className={`w-8 h-8 shrink-0 rounded-full text-xs font-semibold transition-all ${
                                             idx === currentQuestionIndex
                                                 ? "bg-blue-600 text-white ring-2 ring-blue-300"
                                                 : answers[
@@ -513,25 +506,47 @@ export function TestTakingPage() {
                             </div>
                         </div>
 
-                        {currentQuestionIndex <
-                        activeTest.questions.length - 1 ? (
+                        <div className="flex items-center justify-between gap-3">
                             <Button
+                                variant="secondary"
                                 onClick={() =>
-                                    setCurrentQuestionIndex((p) => p + 1)
+                                    setCurrentQuestionIndex((p) =>
+                                        Math.max(0, p - 1),
+                                    )
                                 }
-                                className="px-6"
+                                disabled={currentQuestionIndex === 0}
+                                className="px-4 sm:px-6 shrink-0"
                             >
-                                Next →
+                                ← Previous
                             </Button>
-                        ) : (
-                            <Button
-                                onClick={handleSubmit}
-                                disabled={submitting}
-                                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 px-6"
-                            >
-                                {submitting ? "Submitting..." : "✓ Submit Test"}
-                            </Button>
-                        )}
+
+                            <div className="sm:hidden text-center text-sm font-medium text-gray-500">
+                                {currentQuestionIndex + 1} /{" "}
+                                {activeTest.questions.length}
+                            </div>
+
+                            {currentQuestionIndex <
+                            activeTest.questions.length - 1 ? (
+                                <Button
+                                    onClick={() =>
+                                        setCurrentQuestionIndex((p) => p + 1)
+                                    }
+                                    className="px-4 sm:px-6 shrink-0"
+                                >
+                                    Next →
+                                </Button>
+                            ) : (
+                                <Button
+                                    onClick={handleSubmit}
+                                    disabled={submitting}
+                                    className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 px-4 sm:px-6 shrink-0"
+                                >
+                                    {submitting
+                                        ? "Submitting..."
+                                        : "✓ Submit Test"}
+                                </Button>
+                            )}
+                        </div>
                     </div>
                     {submitError && (
                         <div className="text-sm text-red-600 mt-3 text-center">

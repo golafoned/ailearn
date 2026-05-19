@@ -81,7 +81,7 @@ export function ConceptDetailPage() {
                 if (res?.created) {
                     // refetch attempts
                     fetchConceptAttempts(name, { limit: 25, offset: 0 }).catch(
-                        () => {}
+                        () => {},
                     );
                 }
             } catch {
@@ -106,7 +106,7 @@ export function ConceptDetailPage() {
 
     if (loading) {
         return (
-            <div className="max-w-5xl mx-auto px-4 py-24">
+            <div className="max-w-5xl mx-auto page-shell">
                 <div className="text-center py-16">
                     <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4" />
                     <p className="text-gray-600">Loading concept data...</p>
@@ -117,7 +117,7 @@ export function ConceptDetailPage() {
 
     if (error || !detail) {
         return (
-            <div className="max-w-4xl mx-auto px-4 py-24">
+            <div className="max-w-4xl mx-auto page-shell">
                 <div className="bg-white border border-red-200 rounded-xl p-8 text-center">
                     <h1 className="text-2xl font-bold text-gray-900 mb-2">
                         Concept Not Found
@@ -146,7 +146,7 @@ export function ConceptDetailPage() {
         last5.length >= 2 ? last5[last5.length - 1].value - last5[0].value : 0;
 
     return (
-        <div className="max-w-6xl mx-auto px-4 py-24 sm:py-32">
+        <div className="max-w-6xl mx-auto page-shell">
             <div className="flex items-center gap-3 mb-8">
                 <button
                     onClick={() => navigate(-1)}
@@ -178,7 +178,7 @@ export function ConceptDetailPage() {
                                     Last Practiced:
                                 </span>{" "}
                                 {new Date(
-                                    detail.lastPracticed
+                                    detail.lastPracticed,
                                 ).toLocaleDateString()}
                             </div>
                         )}
@@ -188,7 +188,7 @@ export function ConceptDetailPage() {
                                     Next Review:
                                 </span>{" "}
                                 {new Date(
-                                    detail.nextReview
+                                    detail.nextReview,
                                 ).toLocaleDateString()}
                             </div>
                         )}
@@ -206,10 +206,10 @@ export function ConceptDetailPage() {
                             >
                                 {improvement > 0
                                     ? `Improved +${improvement.toFixed(
-                                          1
+                                          1,
                                       )} pts recently`
                                     : `Dropped ${improvement.toFixed(
-                                          1
+                                          1,
                                       )} pts recently`}
                             </div>
                         )}
@@ -303,8 +303,8 @@ export function ConceptDetailPage() {
                                 onClick={() =>
                                     navigate(
                                         `/learning/concepts/${encodeURIComponent(
-                                            rel.name
-                                        )}`
+                                            rel.name,
+                                        )}`,
                                     )
                                 }
                             />
@@ -372,7 +372,7 @@ export function ConceptDetailPage() {
                                             {new Date(
                                                 a.startedAt ||
                                                     a.date ||
-                                                    Date.now()
+                                                    Date.now(),
                                             ).toLocaleDateString()}
                                         </td>
                                         <td className="py-2 pr-4">
@@ -380,7 +380,7 @@ export function ConceptDetailPage() {
                                                 onClick={() =>
                                                     a.testId &&
                                                     navigate(
-                                                        `/tests/${a.testId}/analytics`
+                                                        `/tests/${a.testId}/analytics`,
                                                     )
                                                 }
                                                 className="text-blue-600 hover:underline font-medium"
@@ -409,8 +409,8 @@ export function ConceptDetailPage() {
                                             {a.score != null
                                                 ? `${a.score}%`
                                                 : a.status === "in_progress"
-                                                ? "—"
-                                                : "—"}
+                                                  ? "—"
+                                                  : "—"}
                                         </td>
                                         <td className="py-2 pr-4">
                                             {a.accuracy != null
@@ -429,7 +429,7 @@ export function ConceptDetailPage() {
                                                     <button
                                                         onClick={() =>
                                                             navigate(
-                                                                `/attempts/${a.attemptId}`
+                                                                `/attempts/${a.attemptId}`,
                                                             )
                                                         }
                                                         className="px-2 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700"
@@ -441,7 +441,7 @@ export function ConceptDetailPage() {
                                                     <button
                                                         onClick={() =>
                                                             navigate(
-                                                                `/tests/${a.testId}/analytics`
+                                                                `/tests/${a.testId}/analytics`,
                                                             )
                                                         }
                                                         className="px-2 py-1 text-xs bg-gray-200 text-gray-800 rounded hover:bg-gray-300"

@@ -39,7 +39,10 @@ export function TestDataProvider({ children }) {
     const [error, setError] = useState(null);
     const [errorCode, setErrorCode] = useState(null);
 
-    const clearError = () => setError(null);
+    const clearError = () => {
+        setError(null);
+        setErrorCode(null);
+    };
 
     // Fetch test metadata + question shells by share code
     const fetchTestByCode = useCallback(
@@ -47,12 +50,14 @@ export function TestDataProvider({ children }) {
             if (!code) return null;
             setLoading(true);
             setError(null);
+            setCurrentTest(null);
             try {
                 const data = await apiFetch(`/api/v1/tests/code/${code}`);
                 setCurrentTest(data);
                 setErrorCode(null);
                 return data;
             } catch (e) {
+                setCurrentTest(null);
                 if (e instanceof ApiError) {
                     const friendly = mapErrorCode(e.code, e.message);
                     setErrorCode(e.code || null);

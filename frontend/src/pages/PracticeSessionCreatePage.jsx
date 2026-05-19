@@ -12,13 +12,13 @@ export function PracticeSessionCreatePage() {
     const initialState = location.state || {};
 
     const [sessionType, setSessionType] = useState(
-        initialState.sessionType || "quick_practice"
+        initialState.sessionType || "quick_practice",
     );
     const [conceptSelection, setConceptSelection] = useState(
-        initialState.conceptSelection || "due"
+        initialState.conceptSelection || "due",
     );
     const [customConcepts, setCustomConcepts] = useState(
-        initialState.customConcepts || []
+        initialState.customConcepts || [],
     );
     const [topic, setTopic] = useState(initialState.topic || "");
     const [difficulty, setDifficulty] = useState("adaptive");
@@ -54,13 +54,12 @@ export function PracticeSessionCreatePage() {
                 state: { sessionId: session.sessionId, isAdaptive: true },
             });
         } catch (e) {
-            console.error("Failed to create session:", e);
             if (
                 e?.code === "NO_CONCEPTS_AVAILABLE" ||
                 e?.message?.includes("No concepts available")
             ) {
                 setError(
-                    "No concepts are currently eligible. Try switching to Weak or Random, or complete a test first to populate concepts."
+                    "No concepts are currently eligible. Try switching to Weak or Random, or complete a test first to populate concepts.",
                 );
             } else {
                 setError("Failed to create session. Please try again.");
@@ -108,7 +107,7 @@ export function PracticeSessionCreatePage() {
     };
 
     return (
-        <div className="max-w-4xl mx-auto px-4 py-24 sm:py-32">
+        <div className="max-w-4xl mx-auto page-shell">
             <div className="flex items-center gap-3 mb-6">
                 <button
                     onClick={() => navigate("/learning")}
@@ -177,6 +176,7 @@ export function PracticeSessionCreatePage() {
                         <label className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
                             <input
                                 type="radio"
+                                aria-label="Due for Review"
                                 value="due"
                                 checked={conceptSelection === "due"}
                                 onChange={(e) =>
@@ -198,6 +198,7 @@ export function PracticeSessionCreatePage() {
                         <label className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
                             <input
                                 type="radio"
+                                aria-label="Weakest Concepts"
                                 value="weak"
                                 checked={conceptSelection === "weak"}
                                 onChange={(e) =>
@@ -218,6 +219,7 @@ export function PracticeSessionCreatePage() {
                         <label className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
                             <input
                                 type="radio"
+                                aria-label="Random Mix"
                                 value="random"
                                 checked={conceptSelection === "random"}
                                 onChange={(e) =>
@@ -238,6 +240,7 @@ export function PracticeSessionCreatePage() {
                         <label className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
                             <input
                                 type="radio"
+                                aria-label="Specific Topic"
                                 value="topic"
                                 checked={conceptSelection === "topic"}
                                 onChange={(e) =>
@@ -255,9 +258,12 @@ export function PracticeSessionCreatePage() {
                                 {conceptSelection === "topic" && (
                                     <div className="mt-2">
                                         <input
+                                            aria-label="Specific topic"
                                             type="text"
                                             value={topic}
-                                            onChange={(e) => setTopic(e.target.value)}
+                                            onChange={(e) =>
+                                                setTopic(e.target.value)
+                                            }
                                             placeholder="e.g., Photosynthesis, Python basics..."
                                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
                                         />
@@ -269,6 +275,7 @@ export function PracticeSessionCreatePage() {
                         <label className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
                             <input
                                 type="radio"
+                                aria-label="Custom Selection"
                                 value="custom"
                                 checked={conceptSelection === "custom"}
                                 onChange={(e) =>
@@ -293,7 +300,7 @@ export function PracticeSessionCreatePage() {
                                                     removable
                                                     onRemove={() =>
                                                         handleRemoveConcept(
-                                                            concept
+                                                            concept,
                                                         )
                                                     }
                                                 />
@@ -308,7 +315,7 @@ export function PracticeSessionCreatePage() {
                                             type="button"
                                             onClick={() =>
                                                 setShowConceptPicker(
-                                                    !showConceptPicker
+                                                    !showConceptPicker,
                                                 )
                                             }
                                             className="text-sm text-blue-600 hover:underline"
@@ -332,11 +339,11 @@ export function PracticeSessionCreatePage() {
                                                                     type="button"
                                                                     onClick={() =>
                                                                         handleAddConcept(
-                                                                            concept.name
+                                                                            concept.name,
                                                                         )
                                                                     }
                                                                     disabled={customConcepts.includes(
-                                                                        concept.name
+                                                                        concept.name,
                                                                     )}
                                                                     className="w-full text-left px-3 py-2 rounded hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
                                                                 >
@@ -349,7 +356,7 @@ export function PracticeSessionCreatePage() {
                                                                     }
                                                                     %)
                                                                 </button>
-                                                            )
+                                                            ),
                                                         )}
                                                     </div>
                                                 ) : (
@@ -368,10 +375,14 @@ export function PracticeSessionCreatePage() {
 
                 {/* Difficulty */}
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                    <label
+                        htmlFor="practice-difficulty"
+                        className="block text-sm font-medium text-gray-700 mb-3"
+                    >
                         Difficulty Mode *
                     </label>
                     <select
+                        id="practice-difficulty"
                         value={difficulty}
                         onChange={(e) => setDifficulty(e.target.value)}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -395,10 +406,14 @@ export function PracticeSessionCreatePage() {
 
                 {/* Question Count */}
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                    <label
+                        htmlFor="practice-question-count"
+                        className="block text-sm font-medium text-gray-700 mb-3"
+                    >
                         Number of Questions: {questionCount}
                     </label>
                     <input
+                        id="practice-question-count"
                         type="range"
                         min="5"
                         max="30"

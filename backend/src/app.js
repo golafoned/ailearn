@@ -23,6 +23,9 @@ export async function createApp() {
     app.get("/health", (req, res) =>
         res.json({ status: "ok", env: env.nodeEnv }),
     );
+    app.get("/api/v1/health", (req, res) =>
+        res.json({ status: "ok", env: env.nodeEnv }),
+    );
     app.use("/api/v1/auth", authRoutes);
     app.use("/api/v1/tests", testsRoutes);
     app.use("/api/v1/users", usersRoutes);

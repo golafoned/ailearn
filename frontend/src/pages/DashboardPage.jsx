@@ -2,10 +2,11 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Button } from "../components/Button";
 import { IconClock, IconCalendar } from "../components/Icons";
 import { useTestData } from "../contexts/TestDataContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useToast } from "../contexts/ToastContext";
 
 export function DashboardPage() {
+    const location = useLocation();
     const {
         myAttempts,
         fetchMyAttempts,
@@ -17,13 +18,21 @@ export function DashboardPage() {
         fetchReviewTests,
         closeTest,
     } = useTestData();
-    const [activeTab, setActiveTab] = useState("myTests");
+    const [activeTab, setActiveTab] = useState(
+        location.state?.activeTab || "myTests",
+    );
     const [closingTestId, setClosingTestId] = useState(null);
     const navigate = useNavigate();
     const toast = useToast();
 
     const loadAttempts = () => fetchMyAttempts().catch(() => {});
     const loadReviewTests = () => fetchReviewTests().catch(() => {});
+
+    useEffect(() => {
+        if (location.state?.activeTab) {
+            setActiveTab(location.state.activeTab);
+        }
+    }, [location.state]);
 
     useEffect(() => {
         if (activeTab === "myTests" && tests.length === 0) {
@@ -91,7 +100,7 @@ export function DashboardPage() {
     };
 
     return (
-        <div className="max-w-7xl mx-auto px-4 py-24 sm:py-32">
+        <div className="max-w-7xl mx-auto page-shell">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-10">
                 <div>
                     <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">

@@ -34,7 +34,7 @@ export function SessionResultsPage() {
     );
 
     return (
-        <div className="max-w-4xl mx-auto px-4 py-24 sm:py-32">
+        <div className="max-w-4xl mx-auto page-shell">
             {/* Success Header */}
             <div className="text-center mb-8">
                 <div className="inline-block text-6xl mb-4 animate-bounce">

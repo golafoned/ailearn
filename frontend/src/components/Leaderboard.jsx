@@ -61,15 +61,19 @@ export function Leaderboard({ testId, limit = 10, showTitle = true }) {
                         index === 0
                             ? "🥇"
                             : index === 1
-                            ? "🥈"
-                            : index === 2
-                            ? "🥉"
-                            : null;
+                              ? "🥈"
+                              : index === 2
+                                ? "🥉"
+                                : null;
                     const isTopThree = index < 3;
 
                     return (
                         <div
-                            key={entry.attemptId}
+                            key={
+                                entry.id ||
+                                entry.attemptId ||
+                                `${entry.displayName || entry.participantName || "anon"}-${entry.submittedAt || index}`
+                            }
                             className={`p-4 flex items-center justify-between transition-colors ${
                                 isTopThree
                                     ? "bg-gradient-to-r from-yellow-50 to-transparent hover:from-yellow-100"
@@ -106,7 +110,7 @@ export function Leaderboard({ testId, limit = 10, showTitle = true }) {
                                         )}
                                     <p className="text-xs text-gray-400 mt-0.5">
                                         {new Date(
-                                            entry.submittedAt
+                                            entry.submittedAt,
                                         ).toLocaleDateString()}
                                     </p>
                                 </div>
@@ -117,8 +121,8 @@ export function Leaderboard({ testId, limit = 10, showTitle = true }) {
                                         entry.score >= 90
                                             ? "text-green-600"
                                             : entry.score >= 70
-                                            ? "text-blue-600"
-                                            : "text-yellow-600"
+                                              ? "text-blue-600"
+                                              : "text-yellow-600"
                                     }`}
                                 >
                                     {entry.score}%
@@ -128,8 +132,8 @@ export function Leaderboard({ testId, limit = 10, showTitle = true }) {
                                         {entry.score >= 95
                                             ? "Perfect!"
                                             : entry.score >= 80
-                                            ? "Excellent"
-                                            : "Great"}
+                                              ? "Excellent"
+                                              : "Great"}
                                     </p>
                                 )}
                             </div>

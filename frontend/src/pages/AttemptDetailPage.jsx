@@ -57,7 +57,7 @@ export function AttemptDetailPage() {
             await fetchOwnerAttemptDetail({ testId, attemptId });
         } catch (e) {
             setError(
-                e instanceof ApiError ? e.message : "Failed to load attempt"
+                e instanceof ApiError ? e.message : "Failed to load attempt",
             );
         } finally {
             setLoading(false);
@@ -75,7 +75,7 @@ export function AttemptDetailPage() {
     const answerItems = detail?.answers || detail?.questions || [];
 
     return (
-        <div className="max-w-4xl mx-auto px-4 py-24 sm:py-32">
+        <div className="max-w-4xl mx-auto page-shell">
             <button
                 onClick={() => navigate(`/tests/${testId}/analytics`)}
                 className="text-blue-600 hover:underline mb-6"
@@ -125,8 +125,8 @@ export function AttemptDetailPage() {
                                 isCorrect
                                     ? "border-green-300"
                                     : chosen != null
-                                    ? "border-red-300"
-                                    : "border-gray-200"
+                                      ? "border-red-300"
+                                      : "border-gray-200"
                             }`}
                         >
                             <div className="flex justify-between items-start mb-2">
@@ -139,8 +139,8 @@ export function AttemptDetailPage() {
                                         isCorrect
                                             ? "bg-green-100 text-green-700"
                                             : chosen != null
-                                            ? "bg-red-100 text-red-700"
-                                            : "bg-gray-100 text-gray-600"
+                                              ? "bg-red-100 text-red-700"
+                                              : "bg-gray-100 text-gray-600"
                                     }`}
                                 >
                                     {isCorrect && <span>✅</span>}
@@ -150,8 +150,8 @@ export function AttemptDetailPage() {
                                     {isCorrect
                                         ? "Correct"
                                         : chosen != null
-                                        ? "Incorrect"
-                                        : "Unanswered"}
+                                          ? "Incorrect"
+                                          : "Unanswered"}
                                 </span>
                             </div>
                             <div className="mt-2 text-sm flex flex-col gap-1">

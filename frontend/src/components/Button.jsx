@@ -14,6 +14,7 @@ export function Button({
     variant = "primary",
     disabled = false,
     type = "button",
+    ...props
 }) {
     const base =
         "inline-flex items-center justify-center px-5 py-3 text-base font-medium rounded-lg focus:outline-none focus:ring-4 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed";
@@ -23,6 +24,7 @@ export function Button({
             onClick={onClick}
             disabled={disabled}
             className={`${base} ${variants[variant]} ${className}`}
+            {...props}
         >
             {children}
         </button>

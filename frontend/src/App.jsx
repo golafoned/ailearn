@@ -109,14 +109,7 @@ export default function App() {
                     />
 
                     {/* Test results for students */}
-                    <Route
-                        path="/results"
-                        element={
-                            <PrivateRoute>
-                                <StudentResultsPage />
-                            </PrivateRoute>
-                        }
-                    />
+                    <Route path="/results" element={<StudentResultsPage />} />
 
                     {/* My Tests (secondary — test management) */}
                     <Route

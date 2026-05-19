@@ -60,38 +60,24 @@ export function HomePage() {
     ];
 
     return (
-        <div className="relative isolate overflow-hidden min-h-screen">
-            {/* Background decoration */}
-            <div
-                className="absolute inset-x-0 -top-40 -z-10 transform-gpu overflow-hidden blur-3xl sm:-top-80"
-                aria-hidden="true"
-            >
-                <div
-                    className="relative left-1/2 aspect-[1155/678] w-[36.125rem] -translate-x-1/2 rotate-[30deg] bg-gradient-to-tr from-blue-400 to-indigo-300 opacity-30 sm:left-1/2 sm:w-[72.1875rem]"
-                    style={{
-                        clipPath:
-                            "polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)",
-                    }}
-                ></div>
-            </div>
-
+        <div className="min-h-screen bg-gradient-to-b from-blue-50/70 via-white to-gray-50">
             {/* Hero Section */}
-            <div className="flex items-center justify-center text-center px-6 pt-28 sm:pt-36 lg:px-8">
+            <div className="flex items-center justify-center text-center px-4 sm:px-6 py-10 sm:py-14 lg:px-8">
                 <div className="mx-auto max-w-4xl">
-                    <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 sm:text-6xl mb-6">
+                    <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 sm:text-5xl mb-4">
                         Master Any Topic with
                         <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                             {" "}
                             AI-Powered Learning
                         </span>
                     </h1>
-                    <p className="mt-4 text-xl leading-8 text-gray-600 mb-10 max-w-2xl mx-auto">
+                    <p className="mt-3 text-base sm:text-lg leading-8 text-gray-600 mb-7 max-w-2xl mx-auto">
                         Practice tests, flashcards, and adaptive study sessions
                         — all powered by AI. Learn faster through spaced
                         repetition and smart feedback.
                     </p>
 
-                    <div className="bg-white/60 backdrop-blur-md p-8 rounded-2xl shadow-xl border border-white/50 space-y-8 max-w-2xl mx-auto">
+                    <div className="bg-white p-5 sm:p-6 rounded-xl shadow-sm border border-gray-200 space-y-6 max-w-3xl mx-auto">
                         {/* Quick Practice Form */}
                         <form
                             onSubmit={handleQuickPractice}
@@ -170,7 +156,7 @@ export function HomePage() {
             </div>
 
             {/* Features Grid */}
-            <div className="max-w-6xl mx-auto px-6 py-20">
+            <div className="max-w-6xl mx-auto px-6 py-12 sm:py-16">
                 <h2 className="text-2xl font-bold text-center text-gray-900 mb-12">
                     Everything you need to learn effectively
                 </h2>
@@ -178,7 +164,7 @@ export function HomePage() {
                     {features.map((f) => (
                         <div
                             key={f.title}
-                            className="bg-white/70 backdrop-blur-sm rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow"
+                            className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow"
                         >
                             <span className="text-4xl mb-3 block">
                                 {f.emoji}
@@ -194,8 +180,8 @@ export function HomePage() {
 
             {/* CTA for non-authenticated */}
             {!isAuthenticated && (
-                <div className="max-w-2xl mx-auto px-6 pb-20 text-center">
-                    <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-8 text-white">
+                <div className="max-w-2xl mx-auto px-6 pb-16 text-center">
+                    <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl p-8 text-white">
                         <h2 className="text-2xl font-bold mb-2">
                             Ready to start learning?
                         </h2>

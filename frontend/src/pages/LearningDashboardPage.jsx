@@ -50,7 +50,7 @@ export function LearningDashboardPage() {
 
     if (loading && !dashboardData) {
         return (
-            <div className="max-w-7xl mx-auto px-4 py-24">
+            <div className="max-w-7xl mx-auto page-shell">
                 <div className="text-center py-12">
                     <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
                     <p className="text-gray-600">
@@ -66,7 +66,7 @@ export function LearningDashboardPage() {
     const dueData = dueReviews || {};
 
     return (
-        <div className="max-w-7xl mx-auto px-4 py-24 sm:py-32">
+        <div className="max-w-7xl mx-auto page-shell">
             {/* Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
                 <div>

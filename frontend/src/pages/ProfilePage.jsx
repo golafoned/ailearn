@@ -30,7 +30,7 @@ export function ProfilePage() {
     };
 
     return (
-        <div className="max-w-lg mx-auto px-4 py-24 sm:py-32">
+        <div className="max-w-lg mx-auto page-shell">
             <h1 className="text-3xl font-bold mb-8">Profile & Settings</h1>
             <form
                 onSubmit={onSubmit}

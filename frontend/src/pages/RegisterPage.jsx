@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { Button } from "../components/Button";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 export function RegisterPage() {
     const { register, loading, error, clearError } = useAuth();
@@ -10,6 +10,7 @@ export function RegisterPage() {
     const [displayName, setDisplayName] = useState("");
     const [formError, setFormError] = useState(null);
     const navigate = useNavigate();
+    const location = useLocation();
 
     const onSubmit = async (e) => {
         e.preventDefault();
@@ -25,14 +26,20 @@ export function RegisterPage() {
         }
         try {
             await register({ email, password, displayName });
-            navigate("/learning");
+            if (location.state?.topic) {
+                navigate("/learning/start", {
+                    state: { topic: location.state.topic },
+                });
+            } else {
+                navigate("/learning");
+            }
         } catch {
             /* context sets error */
         }
     };
 
     return (
-        <div className="max-w-md mx-auto px-4 py-24 sm:py-32">
+        <div className="max-w-md mx-auto page-shell">
             <h1 className="text-3xl font-bold mb-6">Create Account</h1>
             <form
                 onSubmit={onSubmit}
@@ -44,22 +51,32 @@ export function RegisterPage() {
                     </div>
                 )}
                 <div>
-                    <label className="block mb-2 text-sm font-medium text-gray-700">
+                    <label
+                        htmlFor="register-display-name"
+                        className="block mb-2 text-sm font-medium text-gray-700"
+                    >
                         Display Name
                     </label>
                     <input
+                        id="register-display-name"
                         type="text"
+                        autoComplete="name"
                         className="w-full rounded-lg border border-gray-300 p-2.5 focus:ring-blue-500 focus:border-blue-500"
                         value={displayName}
                         onChange={(e) => setDisplayName(e.target.value)}
                     />
                 </div>
                 <div>
-                    <label className="block mb-2 text-sm font-medium text-gray-700">
+                    <label
+                        htmlFor="register-email"
+                        className="block mb-2 text-sm font-medium text-gray-700"
+                    >
                         Email
                     </label>
                     <input
+                        id="register-email"
                         type="email"
+                        autoComplete="email"
                         className="w-full rounded-lg border border-gray-300 p-2.5 focus:ring-blue-500 focus:border-blue-500"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
@@ -67,11 +84,16 @@ export function RegisterPage() {
                     />
                 </div>
                 <div>
-                    <label className="block mb-2 text-sm font-medium text-gray-700">
+                    <label
+                        htmlFor="register-password"
+                        className="block mb-2 text-sm font-medium text-gray-700"
+                    >
                         Password
                     </label>
                     <input
+                        id="register-password"
                         type="password"
+                        autoComplete="new-password"
                         className="w-full rounded-lg border border-gray-300 p-2.5 focus:ring-blue-500 focus:border-blue-500"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
@@ -84,7 +106,11 @@ export function RegisterPage() {
                 </Button>
                 <p className="text-sm text-gray-600">
                     Already have an account?{" "}
-                    <Link to="/login" className="text-blue-600 hover:underline">
+                    <Link
+                        to="/login"
+                        state={location.state}
+                        className="text-blue-600 hover:underline"
+                    >
                         Sign in
                     </Link>
                 </p>

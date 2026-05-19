@@ -23,17 +23,23 @@ export function ReviewTestLandingPage() {
     const { isAuthenticated, user } = useAuth();
     const toast = useToast();
     const autoStartedRef = useRef(false);
+    const lastFetchedCodeRef = useRef(null);
     const [testStatusCode, setTestStatusCode] = useState(null);
     const [isForbidden, setIsForbidden] = useState(false); // Track if user is not the owner
 
     // Clear stale attempt and test data when navigating to a new test code
     useEffect(() => {
+        const normalizedCode = code?.toUpperCase();
+        if (!normalizedCode || lastFetchedCodeRef.current === normalizedCode) {
+            return;
+        }
+        lastFetchedCodeRef.current = normalizedCode;
         setAttempt(null);
         autoStartedRef.current = false;
         setTestStatusCode(null);
         setStartError(null);
         setIsForbidden(false);
-        if (code) fetchTestByCode(code.toUpperCase());
+        fetchTestByCode(normalizedCode).catch(() => {});
     }, [code, fetchTestByCode, setAttempt]);
 
     const onStart = async (e) => {
@@ -65,9 +71,11 @@ export function ReviewTestLandingPage() {
             navigate("/attempt");
         } catch (e) {
             const msg = (e && e.message) || "Unable to start attempt";
+            const code = e?.code;
 
             // Check for review-specific errors
             if (
+                code === "FORBIDDEN_REVIEW_START" ||
                 /FORBIDDEN_REVIEW_START/.test(msg) ||
                 /cannot start this review/i.test(msg)
             ) {
@@ -75,17 +83,12 @@ export function ReviewTestLandingPage() {
                 setStartError(
                     "You cannot start this review test. It belongs to another user.",
                 );
-                toast.error(
-                    "You cannot start this review test. It belongs to another user.",
-                );
-            } else if (/TEST_EXPIRED/.test(msg)) {
+            } else if (code === "TEST_EXPIRED" || /TEST_EXPIRED/.test(msg)) {
                 setTestStatusCode("TEST_EXPIRED");
                 setStartError("This test has expired.");
-                toast.error("This test has expired.");
-            } else if (/TEST_CLOSED/.test(msg)) {
+            } else if (code === "TEST_CLOSED" || /TEST_CLOSED/.test(msg)) {
                 setTestStatusCode("TEST_CLOSED");
                 setStartError("This test is closed.");
-                toast.error("This test is closed.");
             } else {
                 setStartError("Unable to start attempt");
                 toast.error("Unable to start attempt");
@@ -138,7 +141,7 @@ export function ReviewTestLandingPage() {
     };
 
     return (
-        <div className="max-w-xl mx-auto px-4 py-24 sm:py-32">
+        <div className="max-w-xl mx-auto page-shell">
             <div className="bg-white p-8 rounded-xl border border-gray-200 shadow-sm">
                 <div className="mb-4">
                     <span className="inline-block px-3 py-1 text-xs font-semibold text-purple-700 bg-purple-100 rounded-full">
@@ -193,7 +196,13 @@ export function ReviewTestLandingPage() {
                                     start it.
                                 </p>
                                 <button
-                                    onClick={() => navigate("/review-tests")}
+                                    onClick={() =>
+                                        navigate("/my-tests", {
+                                            state: {
+                                                activeTab: "reviewTests",
+                                            },
+                                        })
+                                    }
                                     className="mt-3 text-sm text-blue-600 hover:underline"
                                 >
                                     View your review tests →

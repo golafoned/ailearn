@@ -31,7 +31,7 @@ router.post(
     "/generate",
     requireAuth,
     validate(generateTestSchema),
-    generateTest
+    generateTest,
 );
 // Public fetch metadata & question shells
 router.get("/code/:code", getTestByCode);
@@ -45,8 +45,8 @@ router.get("/me/attempts", requireAuth, listMyAttempts);
 router.get("/mine", requireAuth, listMyTests);
 // Owner view attempts for a test
 router.get("/:testId/attempts", requireAuth, listTestAttempts);
-// Participant attempt detail (requires auth if attempt linked to user)
-router.get("/attempt/:attemptId", requireAuth, getAttemptDetail);
+// Participant attempt detail (requires auth only when attempt is user-linked)
+router.get("/attempt/:attemptId", optionalAuth, getAttemptDetail);
 // Owner attempt detail with answers
 router.get("/:testId/attempts/:attemptId", requireAuth, getOwnerAttemptDetail);
 // Leaderboard
@@ -59,7 +59,7 @@ router.post(
     "/review",
     requireAuth,
     validate(reviewGenerateSchema),
-    generateReviewTest
+    generateReviewTest,
 );
 router.get("/review/mine", requireAuth, listMyReviewTests);
 router.get("/review/recommendations", requireAuth, getReviewRecommendations);

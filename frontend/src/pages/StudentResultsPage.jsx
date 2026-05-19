@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTestData } from "../contexts/TestDataContext";
 import { useAuth } from "../contexts/AuthContext";
 import { apiFetch } from "../utils/apiClient";
@@ -7,34 +7,66 @@ import { useToast } from "../contexts/ToastContext";
 
 export function StudentResultsPage() {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const toast = useToast();
     const { isAuthenticated } = useAuth();
     const { attempt, fetchAttemptDetail, attemptDetail } = useTestData();
     const [creatingDeck, setCreatingDeck] = useState(false);
+    const [loadingResults, setLoadingResults] = useState(false);
+
+    const currentAttemptId =
+        attempt?.attemptId || attempt?.id || searchParams.get("attemptId");
+
+    const detail = useMemo(() => {
+        if (!currentAttemptId) return null;
+        return attemptDetail?.attemptId === currentAttemptId
+            ? attemptDetail
+            : null;
+    }, [attemptDetail, currentAttemptId]);
 
     useEffect(() => {
-        if (attempt?.id && attempt.submittedAt) {
-            fetchAttemptDetail(attempt.id).catch(() => {});
-        }
-    }, [attempt, fetchAttemptDetail]);
+        if (!currentAttemptId) return;
+        let isMounted = true;
 
-    if (!attempt || !attempt.submittedAt) {
+        setLoadingResults(true);
+        fetchAttemptDetail(currentAttemptId)
+            .catch(() => {})
+            .finally(() => {
+                if (isMounted) {
+                    setLoadingResults(false);
+                }
+            });
+
+        return () => {
+            isMounted = false;
+        };
+    }, [currentAttemptId, fetchAttemptDetail]);
+
+    if (!currentAttemptId) {
         return (
-            <div className="max-w-2xl mx-auto px-4 py-24 text-center">
+            <div className="max-w-2xl mx-auto page-shell text-center">
+                <h1 className="text-3xl font-bold text-gray-900 mb-3">
+                    Results
+                </h1>
                 <p className="text-gray-600">No results to display.</p>
                 <button
-                    onClick={() => navigate("/learning")}
+                    onClick={() =>
+                        navigate(isAuthenticated ? "/learning" : "/")
+                    }
                     className="mt-4 text-blue-600 hover:underline"
                 >
-                    Go to Learning Dashboard
+                    {isAuthenticated
+                        ? "Go to Learning Dashboard"
+                        : "Go to Home"}
                 </button>
             </div>
         );
     }
 
-    const score = attempt.score ?? 0;
-    const totalQuestions = attempt.totalQuestions ?? 0;
-    const answered = attempt.answered ?? 0;
+    const score = detail?.score ?? attempt?.score ?? 0;
+    const totalQuestions =
+        detail?.totalQuestions ?? attempt?.totalQuestions ?? 0;
+    const answered = detail?.answered ?? attempt?.answered ?? totalQuestions;
     const correctCount = Math.round((score / 100) * totalQuestions);
 
     const emoji =
@@ -48,7 +80,7 @@ export function StudentResultsPage() {
                 ? "Good effort! Review the missed questions."
                 : "Keep practicing — you'll get there!";
 
-    const answers = attemptDetail?.answers || [];
+    const answers = detail?.answers || [];
     const wrongAnswers = answers.filter((a) => !a.correct);
 
     const handleCreateFlashcards = async () => {
@@ -58,7 +90,7 @@ export function StudentResultsPage() {
                 "/api/v1/flashcards/decks/from-attempt",
                 {
                     method: "POST",
-                    body: { attemptId: attempt.id },
+                    body: { attemptId: currentAttemptId },
                 },
             );
             toast.success(`Created deck with ${resp.cardCount} flashcards!`);
@@ -71,7 +103,7 @@ export function StudentResultsPage() {
     };
 
     return (
-        <div className="max-w-3xl mx-auto px-4 py-24 sm:py-32">
+        <div className="max-w-3xl mx-auto page-shell">
             {/* Score header */}
             <div className="text-center mb-10">
                 <div className="text-6xl mb-4 animate-bounce">{emoji}</div>
@@ -126,15 +158,23 @@ export function StudentResultsPage() {
                         🚀 Continue Learning
                     </button>
                 )}
-                {attempt.id && (
+                {isAuthenticated && currentAttemptId && (
                     <button
-                        onClick={() => navigate(`/attempts/${attempt.id}`)}
+                        onClick={() =>
+                            navigate(`/attempts/${currentAttemptId}`)
+                        }
                         className="px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-all"
                     >
                         📝 Detailed Results & Hints
                     </button>
                 )}
             </div>
+
+            {loadingResults && answers.length === 0 && (
+                <div className="text-center text-sm text-gray-500 mb-8">
+                    Loading question review...
+                </div>
+            )}
 
             {/* Question review */}
             {answers.length > 0 && (
@@ -197,18 +237,29 @@ export function StudentResultsPage() {
             {/* Bottom CTAs */}
             <div className="mt-10 pt-8 border-t border-gray-200 text-center">
                 <div className="flex flex-wrap gap-4 justify-center">
-                    <button
-                        onClick={() => navigate("/learning")}
-                        className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors"
-                    >
-                        📚 Learning Dashboard
-                    </button>
-                    <button
-                        onClick={() => navigate("/flashcards")}
-                        className="px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors"
-                    >
-                        🃏 My Flashcards
-                    </button>
+                    {isAuthenticated ? (
+                        <>
+                            <button
+                                onClick={() => navigate("/learning")}
+                                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors"
+                            >
+                                📚 Learning Dashboard
+                            </button>
+                            <button
+                                onClick={() => navigate("/flashcards")}
+                                className="px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors"
+                            >
+                                🃏 My Flashcards
+                            </button>
+                        </>
+                    ) : (
+                        <button
+                            onClick={() => navigate("/")}
+                            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors"
+                        >
+                            🏠 Back to Home
+                        </button>
+                    )}
                 </div>
             </div>
         </div>

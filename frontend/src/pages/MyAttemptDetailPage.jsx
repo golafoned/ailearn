@@ -50,7 +50,7 @@ export function MyAttemptDetailPage() {
     };
 
     return (
-        <div className="max-w-4xl mx-auto px-4 py-24 sm:py-32">
+        <div className="max-w-4xl mx-auto page-shell">
             <button
                 onClick={() => navigate("/learning")}
                 className="inline-flex items-center text-blue-600 hover:text-blue-700 mb-6 transition-colors"
