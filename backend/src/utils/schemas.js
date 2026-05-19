@@ -71,7 +71,7 @@ export const submitAttemptSchema = z.object({
                 z.object({
                     questionId: z.string(),
                     answer: z.string().nullable(),
-                })
+                }),
             )
             .min(1),
     }),
@@ -122,7 +122,8 @@ export const sessionCreateSchema = z.object({
             .enum(["due", "weak", "random", "custom", "topic"])
             .default("due"),
         customConcepts: z.array(z.string()).optional(),
-        topic: z.string().min(2).max(500).optional(),
+        topic: z.string().min(1).max(500).optional(),
+        sourceText: z.string().max(50000).optional(),
         targetDifficulty: z
             .enum(["easy", "medium", "hard", "adaptive"])
             .default("adaptive"),
@@ -139,7 +140,7 @@ export const sessionCompleteSchema = z.object({
                 z.object({
                     questionId: z.string(),
                     answer: z.string(),
-                })
+                }),
             )
             .min(1),
         timeSpent: z.number().int().min(0),

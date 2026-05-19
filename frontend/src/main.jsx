@@ -10,7 +10,7 @@ import { LearningProvider } from "./contexts/LearningContext";
 
 createRoot(document.getElementById("root")).render(
     <StrictMode>
-        <BrowserRouter>
+        <BrowserRouter future={{ v7_relativeSplatPath: true }}>
             <ToastProvider>
                 <AuthProvider>
                     <TestDataProvider>
@@ -21,5 +21,5 @@ createRoot(document.getElementById("root")).render(
                 </AuthProvider>
             </ToastProvider>
         </BrowserRouter>
-    </StrictMode>
+    </StrictMode>,
 );

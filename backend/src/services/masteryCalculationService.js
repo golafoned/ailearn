@@ -8,9 +8,9 @@ export class MasteryCalculationService {
      */
     calculateMasteryChange(currentMastery, difficulty, wasCorrect) {
         const weights = {
-            easy: { correct: 4, wrong: -20 },
-            medium: { correct: 8, wrong: -15 },
-            hard: { correct: 12, wrong: -8 },
+            easy: { correct: 5, wrong: -8 },
+            medium: { correct: 8, wrong: -12 },
+            hard: { correct: 12, wrong: -5 },
         };
 
         const weight = weights[difficulty] || weights.medium;
@@ -134,7 +134,7 @@ export class MasteryCalculationService {
         if (!concepts || concepts.length === 0) return 0;
         const totalMastery = concepts.reduce(
             (sum, c) => sum + (c.mastery_level || 0),
-            0
+            0,
         );
         return Math.round(totalMastery / concepts.length);
     }

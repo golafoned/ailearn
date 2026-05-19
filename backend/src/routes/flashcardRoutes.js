@@ -11,6 +11,7 @@ import {
     getStudyCards,
     reviewCard,
     generateCards,
+    createDeckFromAttempt,
 } from "../controllers/flashcardController.js";
 
 const router = Router();
@@ -35,5 +36,8 @@ router.post("/decks/:deckId/cards/:cardId/review", reviewCard);
 
 // AI generation
 router.post("/decks/:deckId/generate", generateCards);
+
+// Create deck from test attempt mistakes
+router.post("/decks/from-attempt", createDeckFromAttempt);
 
 export default router;

@@ -1,0 +1,395 @@
+
+> backend@1.0.0 test
+> cross-env NODE_ENV=test node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand --detectOpenHandles tests/learningEndpoints.test.js
+
+(node:10200) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:10200) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+[2026-04-12 16:34:36.056 +0300] [32mINFO[39m: [36mreq[39m
+    method: "POST"
+    url: "/api/v1/auth/register"
+    status: 201
+    ms: 65
+[2026-04-12 16:34:36.123 +0300] [32mINFO[39m: [36mreq[39m
+    method: "POST"
+    url: "/api/v1/auth/login"
+    status: 200
+    ms: 57
+[2026-04-12 16:34:36.137 +0300] [32mINFO[39m: [36mreq[39m
+    method: "GET"
+    url: "/api/v1/learning/dashboard"
+    status: 200
+    ms: 4
+[2026-04-12 16:34:36.148 +0300] [32mINFO[39m: [36mreq[39m
+    method: "GET"
+    url: "/api/v1/learning/dashboard"
+    status: 401
+    ms: 2
+[2026-04-12 16:34:36.157 +0300] [32mINFO[39m: [36mreq[39m
+    method: "GET"
+    url: "/api/v1/learning/concepts"
+    status: 200
+    ms: 3
+[2026-04-12 16:34:36.167 +0300] [32mINFO[39m: [36mreq[39m
+    method: "GET"
+    url: "/api/v1/learning/concepts?filter=weak"
+    status: 200
+    ms: 2
+[2026-04-12 16:34:36.179 +0300] [32mINFO[39m: [36mreq[39m
+    method: "GET"
+    url: "/api/v1/learning/concepts?sort=name"
+    status: 200
+    ms: 2
+[2026-04-12 16:34:36.191 +0300] [32mINFO[39m: [36mreq[39m
+    method: "GET"
+    url: "/api/v1/learning/concepts?limit=10&offset=0"
+    status: 200
+    ms: 3
+[2026-04-12 16:34:36.199 +0300] [31mERROR[39m: [36mUnhandled error[39m
+    err: {
+      "type": "ApiError",
+      "message": "Validation error",
+      "stack":
+          Error: Validation error
+              at ApiError.badRequest (C:\storage\projs\ailearn\backend\src\utils\ApiError.js:9:16)
+              at C:\storage\projs\ailearn\backend\src\middleware\validate.js:15:26
+              at Layer.handleRequest (C:\storage\projs\ailearn\backend\node_modules\router\lib\layer.js:152:17)
+              at next (C:\storage\projs\ailearn\backend\node_modules\router\lib\route.js:157:13)
+              at Route.dispatch (C:\storage\projs\ailearn\backend\node_modules\router\lib\route.js:117:3)
+              at handle (C:\storage\projs\ailearn\backend\node_modules\router\index.js:435:11)
+              at Layer.handleRequest (C:\storage\projs\ailearn\backend\node_modules\router\lib\layer.js:152:17)
+              at C:\storage\projs\ailearn\backend\node_modules\router\index.js:295:15
+              at processParams (C:\storage\projs\ailearn\backend\node_modules\router\index.js:582:12)
+              at next (C:\storage\projs\ailearn\backend\node_modules\router\index.js:291:5)
+              at requireAuth (C:\storage\projs\ailearn\backend\src\middleware\auth.js:14:9)
+              at processTicksAndRejections (node:internal/process/task_queues:104:5)
+      "status": 400,
+      "code": "VALIDATION_ERROR",
+      "details": [
+        {
+          "received": "invalid",
+          "code": "invalid_enum_value",
+          "options": [
+            "all",
+            "weak",
+            "mastered",
+            "learning",
+            "due"
+          ],
+          "path": [
+            "query",
+            "filter"
+          ],
+          "message": "Invalid enum value. Expected 'all' | 'weak' | 'mastered' | 'learning' | 'due', received 'invalid'"
+        }
+      ]
+    }
+[2026-04-12 16:34:36.202 +0300] [32mINFO[39m: [36mreq[39m
+    method: "GET"
+    url: "/api/v1/learning/concepts?filter=invalid"
+    status: 400
+    ms: 4
+[2026-04-12 16:34:36.212 +0300] [32mINFO[39m: [36mreq[39m
+    method: "GET"
+    url: "/api/v1/learning/weak-concepts"
+    status: 200
+    ms: 2
+[2026-04-12 16:34:36.229 +0300] [32mINFO[39m: [36mreq[39m
+    method: "GET"
+    url: "/api/v1/learning/weak-concepts"
+    status: 200
+    ms: 3
+[2026-04-12 16:34:36.237 +0300] [32mINFO[39m: [36mreq[39m
+    method: "GET"
+    url: "/api/v1/learning/due-reviews"
+    status: 200
+    ms: 1
+[2026-04-12 16:34:36.247 +0300] [31mERROR[39m: [36mUnhandled error[39m
+    err: {
+      "type": "ApiError",
+      "message": "Validation error",
+      "stack":
+          Error: Validation error
+              at ApiError.badRequest (C:\storage\projs\ailearn\backend\src\utils\ApiError.js:9:16)
+              at C:\storage\projs\ailearn\backend\src\middleware\validate.js:15:26
+              at Layer.handleRequest (C:\storage\projs\ailearn\backend\node_modules\router\lib\layer.js:152:17)
+              at next (C:\storage\projs\ailearn\backend\node_modules\router\lib\route.js:157:13)
+              at Route.dispatch (C:\storage\projs\ailearn\backend\node_modules\router\lib\route.js:117:3)
+              at handle (C:\storage\projs\ailearn\backend\node_modules\router\index.js:435:11)
+              at Layer.handleRequest (C:\storage\projs\ailearn\backend\node_modules\router\lib\layer.js:152:17)
+              at C:\storage\projs\ailearn\backend\node_modules\router\index.js:295:15
+              at processParams (C:\storage\projs\ailearn\backend\node_modules\router\index.js:582:12)
+              at next (C:\storage\projs\ailearn\backend\node_modules\router\index.js:291:5)
+              at requireAuth (C:\storage\projs\ailearn\backend\src\middleware\auth.js:14:9)
+              at processTicksAndRejections (node:internal/process/task_queues:104:5)
+      "status": 400,
+      "code": "VALIDATION_ERROR",
+      "details": [
+        {
+          "received": "invalid_type",
+          "code": "invalid_enum_value",
+          "options": [
+            "quick_practice",
+            "focused_practice",
+            "mastery_check",
+            "weak_concepts"
+          ],
+          "path": [
+            "body",
+            "sessionType"
+          ],
+          "message": "Invalid enum value. Expected 'quick_practice' | 'focused_practice' | 'mastery_check' | 'weak_concepts', received 'invalid_type'"
+        }
+      ]
+    }
+[2026-04-12 16:34:36.248 +0300] [32mINFO[39m: [36mreq[39m
+    method: "POST"
+    url: "/api/v1/learning/sessions/create"
+    status: 400
+    ms: 2
+[2026-04-12 16:34:36.255 +0300] [31mERROR[39m: [36mUnhandled error[39m
+    err: {
+      "type": "ApiError",
+      "message": "Validation error",
+      "stack":
+          Error: Validation error
+              at ApiError.badRequest (C:\storage\projs\ailearn\backend\src\utils\ApiError.js:9:16)
+              at C:\storage\projs\ailearn\backend\src\middleware\validate.js:15:26
+              at Layer.handleRequest (C:\storage\projs\ailearn\backend\node_modules\router\lib\layer.js:152:17)
+              at next (C:\storage\projs\ailearn\backend\node_modules\router\lib\route.js:157:13)
+              at Route.dispatch (C:\storage\projs\ailearn\backend\node_modules\router\lib\route.js:117:3)
+              at handle (C:\storage\projs\ailearn\backend\node_modules\router\index.js:435:11)
+              at Layer.handleRequest (C:\storage\projs\ailearn\backend\node_modules\router\lib\layer.js:152:17)
+              at C:\storage\projs\ailearn\backend\node_modules\router\index.js:295:15
+              at processParams (C:\storage\projs\ailearn\backend\node_modules\router\index.js:582:12)
+              at next (C:\storage\projs\ailearn\backend\node_modules\router\index.js:291:5)
+              at requireAuth (C:\storage\projs\ailearn\backend\src\middleware\auth.js:14:9)
+              at processTicksAndRejections (node:internal/process/task_queues:104:5)
+      "status": 400,
+      "code": "VALIDATION_ERROR",
+      "details": [
+        {
+          "code": "too_big",
+          "maximum": 50,
+          "type": "number",
+          "inclusive": true,
+          "exact": false,
+          "message": "Number must be less than or equal to 50",
+          "path": [
+            "body",
+            "questionCount"
+          ]
+        }
+      ]
+    }
+[2026-04-12 16:34:36.256 +0300] [32mINFO[39m: [36mreq[39m
+    method: "POST"
+    url: "/api/v1/learning/sessions/create"
+    status: 400
+    ms: 2
+[2026-04-12 16:34:36.265 +0300] [31mERROR[39m: [36mUnhandled error[39m
+    err: {
+      "type": "ApiError",
+      "message": "Session not found",
+      "stack":
+          Error: Session not found
+              at ApiError.notFound (C:\storage\projs\ailearn\backend\src\utils\ApiError.js:18:16)
+              at completeSession (C:\storage\projs\ailearn\backend\src\controllers\learningController.js:470:28)
+              at processTicksAndRejections (node:internal/process/task_queues:104:5)
+      "status": 404,
+      "code": "SESSION_NOT_FOUND"
+    }
+[2026-04-12 16:34:36.266 +0300] [32mINFO[39m: [36mreq[39m
+    method: "POST"
+    url: "/api/v1/learning/sessions/00000000-0000-0000-0000-000000000000/complete"
+    status: 404
+    ms: 3
+[2026-04-12 16:34:36.274 +0300] [32mINFO[39m: [36mreq[39m
+    method: "GET"
+    url: "/api/v1/learning/progress-chart"
+    status: 200
+    ms: 1
+[2026-04-12 16:34:36.282 +0300] [32mINFO[39m: [36mreq[39m
+    method: "GET"
+    url: "/api/v1/learning/progress-chart?period=week"
+    status: 200
+    ms: 1
+[2026-04-12 16:34:36.289 +0300] [31mERROR[39m: [36mUnhandled error[39m
+    err: {
+      "type": "ApiError",
+      "message": "Validation error",
+      "stack":
+          Error: Validation error
+              at ApiError.badRequest (C:\storage\projs\ailearn\backend\src\utils\ApiError.js:9:16)
+              at C:\storage\projs\ailearn\backend\src\middleware\validate.js:15:26
+              at Layer.handleRequest (C:\storage\projs\ailearn\backend\node_modules\router\lib\layer.js:152:17)
+              at next (C:\storage\projs\ailearn\backend\node_modules\router\lib\route.js:157:13)
+              at Route.dispatch (C:\storage\projs\ailearn\backend\node_modules\router\lib\route.js:117:3)
+              at handle (C:\storage\projs\ailearn\backend\node_modules\router\index.js:435:11)
+              at Layer.handleRequest (C:\storage\projs\ailearn\backend\node_modules\router\lib\layer.js:152:17)
+              at C:\storage\projs\ailearn\backend\node_modules\router\index.js:295:15
+              at processParams (C:\storage\projs\ailearn\backend\node_modules\router\index.js:582:12)
+              at next (C:\storage\projs\ailearn\backend\node_modules\router\index.js:291:5)
+              at requireAuth (C:\storage\projs\ailearn\backend\src\middleware\auth.js:14:9)
+              at processTicksAndRejections (node:internal/process/task_queues:104:5)
+      "status": 400,
+      "code": "VALIDATION_ERROR",
+      "details": [
+        {
+          "received": "invalid",
+          "code": "invalid_enum_value",
+          "options": [
+            "week",
+            "month",
+            "quarter"
+          ],
+          "path": [
+            "query",
+            "period"
+          ],
+          "message": "Invalid enum value. Expected 'week' | 'month' | 'quarter', received 'invalid'"
+        }
+      ]
+    }
+[2026-04-12 16:34:36.291 +0300] [32mINFO[39m: [36mreq[39m
+    method: "GET"
+    url: "/api/v1/learning/progress-chart?period=invalid"
+    status: 400
+    ms: 3
+[2026-04-12 16:34:36.299 +0300] [32mINFO[39m: [36mreq[39m
+    method: "GET"
+    url: "/api/v1/learning/recommendations"
+    status: 200
+    ms: 2
+[2026-04-12 16:34:36.308 +0300] [32mINFO[39m: [36mreq[39m
+    method: "GET"
+    url: "/api/v1/learning/recommendations"
+    status: 200
+    ms: 2
+[2026-04-12 16:34:36.324 +0300] [32mINFO[39m: [36mreq[39m
+    method: "GET"
+    url: "/api/v1/learning/achievements"
+    status: 200
+    ms: 2
+[2026-04-12 16:34:36.332 +0300] [32mINFO[39m: [36mreq[39m
+    method: "GET"
+    url: "/api/v1/learning/sessions/history"
+    status: 200
+    ms: 2
+[2026-04-12 16:34:36.338 +0300] [32mINFO[39m: [36mreq[39m
+    method: "GET"
+    url: "/api/v1/learning/sessions/history?limit=5&offset=0"
+    status: 200
+    ms: 1
+[2026-04-12 16:34:36.346 +0300] [32mINFO[39m: [36mConcept auto-created[39m
+    userId: "04098732-c567-4a67-88fb-7a2842124828"
+    concept: "NonExistentConcept"
+[2026-04-12 16:34:36.348 +0300] [32mINFO[39m: [36mreq[39m
+    method: "GET"
+    url: "/api/v1/learning/concepts/NonExistentConcept/details"
+    status: 200
+    ms: 3
+[2026-04-12 16:34:36.359 +0300] [32mINFO[39m: [36mreq[39m
+    method: "GET"
+    url: "/api/v1/learning/dashboard"
+    status: 200
+    ms: 3
+[2026-04-12 16:34:36.369 +0300] [32mINFO[39m: [36mreq[39m
+    method: "POST"
+    url: "/api/v1/tests/start"
+    status: 201
+    ms: 3
+[2026-04-12 16:34:36.382 +0300] [32mINFO[39m: [36mreq[39m
+    method: "POST"
+    url: "/api/v1/learning/sessions/65292dca-2bd4-44dd-9d7e-f275eee5b5c1/complete"
+    status: 200
+    ms: 7
+[2026-04-12 16:34:36.390 +0300] [32mINFO[39m: [36mreq[39m
+    method: "GET"
+    url: "/api/v1/learning/dashboard"
+    status: 200
+    ms: 3
+[2026-04-12 16:34:36.403 +0300] [32mINFO[39m: [36mreq[39m
+    method: "GET"
+    url: "/api/v1/learning/sessions/history"
+    status: 200
+    ms: 2
+[2026-04-12 16:34:36.410 +0300] [32mINFO[39m: [36mreq[39m
+    method: "GET"
+    url: "/api/v1/learning/concepts/Photosynthesis/details"
+    status: 200
+    ms: 2
+[2026-04-12 16:34:36.416 +0300] [32mINFO[39m: [36mreq[39m
+    method: "GET"
+    url: "/api/v1/learning/concepts"
+    status: 200
+    ms: 1
+[2026-04-12 16:34:36.422 +0300] [32mINFO[39m: [36mreq[39m
+    method: "GET"
+    url: "/api/v1/learning/recommendations"
+    status: 200
+    ms: 2
+FAIL tests/learningEndpoints.test.js
+  Learning Endpoints
+    GET /api/v1/learning/dashboard
+      ΓêÜ should return dashboard metrics for new user (13 ms)
+      ΓêÜ should require authentication (8 ms)
+    GET /api/v1/learning/concepts
+      ΓêÜ should return empty concepts list for new user (10 ms)
+      ΓêÜ should accept filter parameter (9 ms)
+      ΓêÜ should accept sort parameter (14 ms)
+      ΓêÜ should accept pagination parameters (11 ms)
+      ΓêÜ should reject invalid filter (10 ms)
+    GET /api/v1/learning/weak-concepts
+      ΓêÜ should return weak concepts list (10 ms)
+      ΓêÜ should include priority and recommendation (17 ms)
+    GET /api/v1/learning/due-reviews
+      ΓêÜ should return due reviews list (8 ms)
+    POST /api/v1/learning/sessions/create
+      ΓêÜ should create a quick practice session (1 ms)
+      ΓêÜ should validate session type (9 ms)
+      ΓêÜ should validate question count (8 ms)
+      ΓêÜ should support custom concept selection (1 ms)
+    POST /api/v1/learning/sessions/:sessionId/complete
+      ΓêÜ should reject completion of non-existent session (9 ms)
+      ΓêÜ should validate answers format
+      ΓêÜ should require timeSpent (1 ms)
+    GET /api/v1/learning/progress-chart
+      ΓêÜ should return progress chart data (8 ms)
+      ΓêÜ should accept period parameter (8 ms)
+      ΓêÜ should reject invalid period (8 ms)
+    GET /api/v1/learning/recommendations
+      ΓêÜ should return personalized recommendations (9 ms)
+      ΓêÜ should include recommendation details (9 ms)
+    GET /api/v1/learning/achievements
+      ΓêÜ should return achievement progress (16 ms)
+    GET /api/v1/learning/sessions/history
+      ΓêÜ should return session history (7 ms)
+      ΓêÜ should support pagination (7 ms)
+    GET /api/v1/learning/concepts/:name/details
+      ├ù should return 404 for non-existent concept (11 ms)
+    Integration: Complete Session Flow
+      ΓêÜ should complete full session workflow (71 ms)
+
+  ΓùÅ Learning Endpoints ΓÇ║ GET /api/v1/learning/concepts/:name/details ΓÇ║ should return 404 for non-existent concept
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 404
+    Received: 200
+
+      428 |                 .set("Authorization", `Bearer ${authToken}`);
+      429 |
+    > 430 |             expect(res.status).toBe(404);
+          |                                ^
+      431 |             expect(res.body.error.code).toBe("CONCEPT_NOT_FOUND");
+      432 |         });
+      433 |     });
+
+      at Object.<anonymous> (tests/learningEndpoints.test.js:430:32)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 26 passed, 27 total
+Snapshots:   0 total
+Time:        1.094 s, estimated 2 s
+Ran all test suites matching /tests\\learningEndpoints.test.js/i.

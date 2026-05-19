@@ -5,7 +5,7 @@ export class FlashcardDeckRepository {
         await run(
             `INSERT INTO flashcard_decks (id, user_id, title, description, concept_name)
              VALUES (?, ?, ?, ?, ?)`,
-            [id, userId, title, description || null, conceptName || null]
+            [id, userId, title, description || null, conceptName || null],
         );
         return this.findById(id);
     }
@@ -17,26 +17,35 @@ export class FlashcardDeckRepository {
     async findByUser(userId) {
         return queryAll(
             `SELECT * FROM flashcard_decks WHERE user_id = ? ORDER BY updated_at DESC`,
-            [userId]
+            [userId],
         );
     }
 
     async update(id, { title, description }) {
         const sets = [];
         const params = [];
-        if (title !== undefined) { sets.push("title = ?"); params.push(title); }
-        if (description !== undefined) { sets.push("description = ?"); params.push(description); }
+        if (title !== undefined) {
+            sets.push("title = ?");
+            params.push(title);
+        }
+        if (description !== undefined) {
+            sets.push("description = ?");
+            params.push(description);
+        }
         if (sets.length === 0) return this.findById(id);
         sets.push("updated_at = datetime('now')");
         params.push(id);
-        await run(`UPDATE flashcard_decks SET ${sets.join(", ")} WHERE id = ?`, params);
+        await run(
+            `UPDATE flashcard_decks SET ${sets.join(", ")} WHERE id = ?`,
+            params,
+        );
         return this.findById(id);
     }
 
     async updateCardCount(deckId) {
         await run(
             `UPDATE flashcard_decks SET card_count = (SELECT COUNT(*) FROM flashcards WHERE deck_id = ?), updated_at = datetime('now') WHERE id = ?`,
-            [deckId, deckId]
+            [deckId, deckId],
         );
     }
 
@@ -51,7 +60,7 @@ export class FlashcardRepository {
         await run(
             `INSERT INTO flashcards (id, deck_id, front, back)
              VALUES (?, ?, ?, ?)`,
-            [id, deckId, front, back]
+            [id, deckId, front, back],
         );
         return this.findById(id);
     }
@@ -63,15 +72,23 @@ export class FlashcardRepository {
     async findByDeck(deckId) {
         return queryAll(
             `SELECT * FROM flashcards WHERE deck_id = ? ORDER BY created_at`,
-            [deckId]
+            [deckId],
         );
     }
 
     async getDueCards(deckId, limit = 20) {
         return queryAll(
-            `SELECT * FROM flashcards WHERE deck_id = ? AND next_review <= datetime('now')
+            `SELECT * FROM flashcards WHERE deck_id = ? AND datetime(next_review) <= datetime('now')
              ORDER BY next_review ASC LIMIT ?`,
-            [deckId, limit]
+            [deckId, limit],
+        );
+    }
+
+    async getAllCards(deckId, limit = 50) {
+        return queryAll(
+            `SELECT * FROM flashcards WHERE deck_id = ?
+             ORDER BY created_at ASC LIMIT ?`,
+            [deckId, limit],
         );
     }
 
@@ -79,13 +96,16 @@ export class FlashcardRepository {
         return queryAll(
             `SELECT f.* FROM flashcards f
              JOIN flashcard_decks d ON f.deck_id = d.id
-             WHERE d.user_id = ? AND f.next_review <= datetime('now')
+             WHERE d.user_id = ? AND datetime(f.next_review) <= datetime('now')
              ORDER BY f.next_review ASC LIMIT ?`,
-            [userId, limit]
+            [userId, limit],
         );
     }
 
-    async updateReview(id, { difficulty, intervalDays, easeFactor, nextReview, correct }) {
+    async updateReview(
+        id,
+        { difficulty, intervalDays, easeFactor, nextReview, correct },
+    ) {
         await run(
             `UPDATE flashcards SET
                 difficulty = ?, interval_days = ?, ease_factor = ?,
@@ -93,7 +113,14 @@ export class FlashcardRepository {
                 correct_count = correct_count + ?,
                 updated_at = datetime('now')
              WHERE id = ?`,
-            [difficulty, intervalDays, easeFactor, nextReview, correct ? 1 : 0, id]
+            [
+                difficulty,
+                intervalDays,
+                easeFactor,
+                nextReview,
+                correct ? 1 : 0,
+                id,
+            ],
         );
         return this.findById(id);
     }
@@ -101,12 +128,21 @@ export class FlashcardRepository {
     async update(id, { front, back }) {
         const sets = [];
         const params = [];
-        if (front !== undefined) { sets.push("front = ?"); params.push(front); }
-        if (back !== undefined) { sets.push("back = ?"); params.push(back); }
+        if (front !== undefined) {
+            sets.push("front = ?");
+            params.push(front);
+        }
+        if (back !== undefined) {
+            sets.push("back = ?");
+            params.push(back);
+        }
         if (sets.length === 0) return this.findById(id);
         sets.push("updated_at = datetime('now')");
         params.push(id);
-        await run(`UPDATE flashcards SET ${sets.join(", ")} WHERE id = ?`, params);
+        await run(
+            `UPDATE flashcards SET ${sets.join(", ")} WHERE id = ?`,
+            params,
+        );
         return this.findById(id);
     }
 
@@ -121,5 +157,25 @@ export class FlashcardRepository {
             results.push(result);
         }
         return results;
+    }
+
+    async countByUser(userId) {
+        const row = await queryOne(
+            `SELECT COUNT(*) as count FROM flashcards f
+             JOIN flashcard_decks d ON f.deck_id = d.id
+             WHERE d.user_id = ?`,
+            [userId],
+        );
+        return row?.count || 0;
+    }
+
+    async totalReviewsByUser(userId) {
+        const row = await queryOne(
+            `SELECT COALESCE(SUM(f.review_count), 0) as count FROM flashcards f
+             JOIN flashcard_decks d ON f.deck_id = d.id
+             WHERE d.user_id = ?`,
+            [userId],
+        );
+        return row?.count || 0;
     }
 }

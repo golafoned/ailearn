@@ -1,10 +1,18 @@
 import { v4 as uuid } from "uuid";
-import { FlashcardDeckRepository, FlashcardRepository } from "../repositories/flashcardRepository.js";
+import {
+    FlashcardDeckRepository,
+    FlashcardRepository,
+} from "../repositories/flashcardRepository.js";
+import { AchievementService } from "../services/achievementService.js";
+import { UserAchievementRepository } from "../repositories/achievementConceptRepositories.js";
 import { ApiError } from "../utils/ApiError.js";
 import { logger } from "../config/logger.js";
 
 const deckRepo = new FlashcardDeckRepository();
 const cardRepo = new FlashcardRepository();
+const achievementService = new AchievementService(
+    new UserAchievementRepository(),
+);
 
 // ==================== Deck Endpoints ====================
 
@@ -65,7 +73,7 @@ export async function getDeck(req, res, next) {
         }
         const cards = await cardRepo.findByDeck(deckId);
         const dueCount = cards.filter(
-            (c) => new Date(c.next_review) <= new Date()
+            (c) => new Date(c.next_review) <= new Date(),
         ).length;
         res.json({
             id: deck.id,
@@ -129,6 +137,15 @@ export async function addCard(req, res, next) {
             back: back.trim(),
         });
         await deckRepo.updateCardCount(deckId);
+
+        // Check flashcard achievements
+        const totalCards = await cardRepo.countByUser(userId);
+        await achievementService.checkAchievements(
+            userId,
+            "flashcard_card_created",
+            { totalCards },
+        );
+
         res.status(201).json({
             id: card.id,
             front: card.front,
@@ -183,15 +200,20 @@ export async function getStudyCards(req, res, next) {
         const userId = req.user.id;
         const { deckId } = req.params;
         const limit = parseInt(req.query.limit) || 20;
+        const mode = req.query.mode || "due"; // "due" | "all"
         const deck = await deckRepo.findById(deckId);
         if (!deck || deck.user_id !== userId) {
             throw ApiError.notFound("Deck not found");
         }
-        const cards = await cardRepo.getDueCards(deckId, limit);
+        const cards =
+            mode === "all"
+                ? await cardRepo.getAllCards(deckId, limit)
+                : await cardRepo.getDueCards(deckId, limit);
         res.json({
             deckId,
             deckTitle: deck.title,
             dueCount: cards.length,
+            mode,
             cards: cards.map((c) => ({
                 id: c.id,
                 front: c.front,
@@ -243,7 +265,8 @@ export async function reviewCard(req, res, next) {
         }
 
         // Update ease factor
-        easeFactor = easeFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
+        easeFactor =
+            easeFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
         if (easeFactor < 1.3) easeFactor = 1.3;
 
         const nextReview = new Date();
@@ -260,6 +283,14 @@ export async function reviewCard(req, res, next) {
             nextReview: nextReview.toISOString(),
             correct,
         });
+
+        // Check flashcard review achievements
+        const totalReviews = await cardRepo.totalReviewsByUser(userId);
+        await achievementService.checkAchievements(
+            userId,
+            "flashcard_reviewed",
+            { totalReviews },
+        );
 
         res.json({
             cardId: updated.id,
@@ -306,13 +337,20 @@ export async function generateCards(req, res, next) {
             await deckRepo.updateCardCount(deckId);
             return res.status(201).json({
                 generated: created.length,
-                cards: created.map((c) => ({ id: c.id, front: c.front, back: c.back })),
+                cards: created.map((c) => ({
+                    id: c.id,
+                    front: c.front,
+                    back: c.back,
+                })),
             });
         }
 
         const apiKey = process.env.OPENROUTER_API_KEY;
         if (!apiKey) {
-            throw ApiError.internal("Missing OPENROUTER_API_KEY", "MISSING_API_KEY");
+            throw ApiError.internal(
+                "Missing OPENROUTER_API_KEY",
+                "MISSING_API_KEY",
+            );
         }
 
         const model = process.env.OPENROUTER_MODEL || "openai/gpt-4o-mini";
@@ -330,18 +368,25 @@ Keep answers concise but complete.`;
             headers["HTTP-Referer"] = process.env.OPENROUTER_SITE_URL;
         }
 
-        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-            method: "POST",
-            headers,
-            body: JSON.stringify({
-                model,
-                messages: [
-                    { role: "system", content: "You output ONLY JSON. No prose. No explanations." },
-                    { role: "user", content: prompt },
-                ],
-                temperature: 0.7,
-            }),
-        });
+        const response = await fetch(
+            "https://openrouter.ai/api/v1/chat/completions",
+            {
+                method: "POST",
+                headers,
+                body: JSON.stringify({
+                    model,
+                    messages: [
+                        {
+                            role: "system",
+                            content:
+                                "You output ONLY JSON. No prose. No explanations.",
+                        },
+                        { role: "user", content: prompt },
+                    ],
+                    temperature: 0.7,
+                }),
+            },
+        );
 
         const responseText = await response.text();
         let aiCards = [];
@@ -372,9 +417,99 @@ Keep answers concise but complete.`;
         const created = await cardRepo.bulkCreate(cardsToCreate);
         await deckRepo.updateCardCount(deckId);
 
+        // Check flashcard achievements
+        const totalCards = await cardRepo.countByUser(userId);
+        await achievementService.checkAchievements(
+            userId,
+            "flashcard_card_created",
+            { totalCards },
+        );
+
         res.status(201).json({
             generated: created.length,
-            cards: created.map((c) => ({ id: c.id, front: c.front, back: c.back })),
+            cards: created.map((c) => ({
+                id: c.id,
+                front: c.front,
+                back: c.back,
+            })),
+        });
+    } catch (e) {
+        next(e);
+    }
+}
+
+// ==================== Create Deck from Test Attempt Mistakes ====================
+
+export async function createDeckFromAttempt(req, res, next) {
+    try {
+        const userId = req.user.id;
+        const { attemptId } = req.body;
+        if (!attemptId) {
+            throw ApiError.badRequest("attemptId is required");
+        }
+
+        // Import repos inline to avoid circular deps
+        const { TestAttemptRepository, AttemptAnswersRepository } =
+            await import("../repositories/testAttemptRepository.js");
+        const { TestRepository } =
+            await import("../repositories/testRepository.js");
+        const attemptRepo = new TestAttemptRepository();
+        const answersRepo = new AttemptAnswersRepository();
+        const testRepo = new TestRepository();
+
+        const attempt = await attemptRepo.findById(attemptId);
+        if (!attempt) throw ApiError.notFound("Attempt not found");
+
+        const test = await testRepo.findById(attempt.test_id);
+        if (!test) throw ApiError.notFound("Test not found");
+
+        const answers = await answersRepo.listForAttempt(attemptId);
+        const questions = JSON.parse(test.questions_json);
+
+        // Filter wrong answers
+        const wrongAnswers = answers.filter((a) => a.is_correct === 0);
+        if (wrongAnswers.length === 0) {
+            throw ApiError.badRequest(
+                "No wrong answers to create flashcards from — perfect score!",
+            );
+        }
+
+        // Create deck
+        const deckId = uuid();
+        const deck = await deckRepo.create({
+            id: deckId,
+            userId,
+            title: `Review: ${test.title || "Test"}`.slice(0, 100),
+            description: `Flashcards from mistakes on "${test.title || "Test"}"`,
+            conceptName: null,
+        });
+
+        // Create cards from wrong answers
+        const cardsToCreate = wrongAnswers.map((a) => {
+            const q = questions.find((q) => q.id === a.question_id) || {};
+            return {
+                id: uuid(),
+                deckId,
+                front: a.question_text || q.question || "Question",
+                back: `Correct answer: ${a.correct_answer || q.answer || "N/A"}${q.explanation ? `\n\n${q.explanation}` : ""}`,
+            };
+        });
+
+        const created = await cardRepo.bulkCreate(cardsToCreate);
+        await deckRepo.updateCardCount(deckId);
+
+        // Check flashcard achievements
+        const totalCards = await cardRepo.countByUser(userId);
+        await achievementService.checkAchievements(
+            userId,
+            "flashcard_card_created",
+            { totalCards },
+        );
+
+        res.status(201).json({
+            deckId: deck.id,
+            title: deck.title,
+            cardCount: created.length,
         });
     } catch (e) {
         next(e);

@@ -86,7 +86,7 @@ function exec(sql) {
 export function runMigrations() {
     const migrationsDir = path.join(process.cwd(), "src", "db", "migrations");
     exec(
-        `CREATE TABLE IF NOT EXISTS migrations (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, run_at TEXT NOT NULL);`
+        `CREATE TABLE IF NOT EXISTS migrations (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, run_at TEXT NOT NULL);`,
     );
     const appliedRes = db.exec("SELECT name FROM migrations");
     const applied = new Set(appliedRes[0]?.values.map((v) => v[0]) || []);
@@ -105,8 +105,8 @@ export function runMigrations() {
             db.exec(
                 `INSERT INTO migrations (name, run_at) VALUES ('${file.replace(
                     /'/g,
-                    "''"
-                )}', '${now}')`
+                    "''",
+                )}', '${now}')`,
             );
             db.exec("COMMIT;");
         } catch (e) {

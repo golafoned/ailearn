@@ -17,6 +17,7 @@ export function TestLandingPage() {
         error,
         startAttempt,
         attempt,
+        setAttempt,
     } = useTestData();
     const [participantName, setParticipantName] = useState("");
     const [displayName, setDisplayName] = useState("");
@@ -26,9 +27,14 @@ export function TestLandingPage() {
     const autoStartedRef = useRef(false);
     const [testStatusCode, setTestStatusCode] = useState(null); // e.g., TEST_EXPIRED, TEST_CLOSED
 
+    // Clear stale attempt and test data when navigating to a new test code
     useEffect(() => {
+        setAttempt(null);
+        autoStartedRef.current = false;
+        setTestStatusCode(null);
+        setStartError(null);
         if (code) fetchTestByCode(code.toUpperCase());
-    }, [code, fetchTestByCode]);
+    }, [code, fetchTestByCode, setAttempt]);
 
     const onStart = async (e) => {
         if (e) e.preventDefault();
@@ -38,12 +44,10 @@ export function TestLandingPage() {
         let finalDisplay = displayName.trim();
         if (isAuthenticated) {
             finalParticipant =
-                user?.displayName ||
-                user?.email?.split("@")[0] ||
-                "Participant";
+                user?.displayName || user?.email?.split("@")[0] || "Learner";
             finalDisplay = user?.displayName || "";
         } else if (!finalParticipant) {
-            setStartError("Participant name required");
+            setStartError("Your name is required");
             return;
         }
         try {
@@ -94,12 +98,12 @@ export function TestLandingPage() {
             testStatusCode === "TEST_EXPIRED"
                 ? "This test has expired."
                 : testStatusCode === "TEST_CLOSED"
-                ? "This test is closed."
-                : /EXPIRED/i.test(error)
-                ? "This test has expired."
-                : /not found/i.test(error)
-                ? "Test code not found."
-                : error;
+                  ? "This test is closed."
+                  : /EXPIRED/i.test(error)
+                    ? "This test has expired."
+                    : /not found/i.test(error)
+                      ? "Test code not found."
+                      : error;
         return <p className="text-sm text-red-600 mb-4">{msg}</p>;
     };
 
@@ -149,7 +153,7 @@ export function TestLandingPage() {
                                             setParticipantName(e.target.value)
                                         }
                                         className="w-full border rounded-md px-3 py-2 text-sm"
-                                        placeholder="Jane Doe"
+                                        placeholder="Enter your name"
                                     />
                                 </div>
                                 <div>
@@ -166,7 +170,7 @@ export function TestLandingPage() {
                                             setDisplayName(e.target.value)
                                         }
                                         className="w-full border rounded-md px-3 py-2 text-sm"
-                                        placeholder="Shown publicly"
+                                        placeholder="Shown on leaderboard"
                                     />
                                 </div>
                                 {startError && (

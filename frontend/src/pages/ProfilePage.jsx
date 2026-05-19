@@ -61,14 +61,14 @@ export function ProfilePage() {
                         {status === "saving"
                             ? "Saving..."
                             : status === "saved"
-                            ? "Saved"
-                            : "Save Changes"}
+                              ? "Saved"
+                              : "Save Changes"}
                     </Button>
                     <Button
                         variant="secondary"
                         type="button"
                         className="flex-1"
-                        onClick={() => navigate("/dashboard")}
+                        onClick={() => navigate("/learning")}
                     >
                         Cancel
                     </Button>

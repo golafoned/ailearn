@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLearning } from "../contexts/LearningContext";
+import { RecommendationsPanel } from "../components/RecommendationsPanel";
 import {
     StatCard,
     LevelBadge,
@@ -67,7 +68,7 @@ export function LearningDashboardPage() {
     return (
         <div className="max-w-7xl mx-auto px-4 py-24 sm:py-32">
             {/* Header */}
-            <div className="flex justify-between items-center mb-8">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
                 <div>
                     <h1 className="text-4xl font-bold text-gray-900 mb-2">
                         📚 Learning Dashboard
@@ -85,12 +86,63 @@ export function LearningDashboardPage() {
                         🏆 Achievements
                     </button>
                     <button
-                        onClick={handleCreateSession}
+                        onClick={() => navigate("/learning/start")}
                         className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg font-medium"
                     >
-                        + Create Practice Session
+                        🚀 Start Learning
                     </button>
                 </div>
+            </div>
+
+            {/* Quick Actions Bar */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+                <button
+                    onClick={() => navigate("/learning/start")}
+                    className="flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl hover:shadow-md transition-all text-left"
+                >
+                    <span className="text-3xl">🎯</span>
+                    <div>
+                        <span className="font-semibold text-gray-900 block">
+                            Learn New Topic
+                        </span>
+                        <span className="text-sm text-gray-500">
+                            AI-generated practice on any subject
+                        </span>
+                    </div>
+                </button>
+                <button
+                    onClick={() => navigate("/flashcards")}
+                    className="flex items-center gap-3 p-4 bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl hover:shadow-md transition-all text-left"
+                >
+                    <span className="text-3xl">🃏</span>
+                    <div>
+                        <span className="font-semibold text-gray-900 block">
+                            Study Flashcards
+                        </span>
+                        <span className="text-sm text-gray-500">
+                            Spaced repetition review
+                        </span>
+                    </div>
+                </button>
+                <button
+                    onClick={handleCreateSession}
+                    className="flex items-center gap-3 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl hover:shadow-md transition-all text-left"
+                >
+                    <span className="text-3xl">⚡</span>
+                    <div>
+                        <span className="font-semibold text-gray-900 block">
+                            Quick Practice
+                        </span>
+                        <span className="text-sm text-gray-500">
+                            Review due & weak concepts
+                        </span>
+                    </div>
+                </button>
+            </div>
+
+            {/* Recommendations Panel */}
+            <div className="mb-8">
+                <RecommendationsPanel />
             </div>
 
             {/* Overview Stats */}
@@ -213,7 +265,7 @@ export function LearningDashboardPage() {
                                             <button
                                                 onClick={() =>
                                                     handlePracticeConcept(
-                                                        concept.name
+                                                        concept.name,
                                                     )
                                                 }
                                                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"

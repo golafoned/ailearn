@@ -30,7 +30,7 @@ export function TestAnalyticsPage() {
                 setError(
                     e instanceof ApiError
                         ? e.message
-                        : "Failed to load attempts"
+                        : "Failed to load attempts",
                 );
         } finally {
             if (active) setLoading(false);
@@ -52,7 +52,7 @@ export function TestAnalyticsPage() {
             await fetchAttemptsForTest(id);
         } catch (e) {
             setError(
-                e instanceof ApiError ? e.message : "Failed to load attempts"
+                e instanceof ApiError ? e.message : "Failed to load attempts",
             );
         } finally {
             setLoading(false);
@@ -68,7 +68,7 @@ export function TestAnalyticsPage() {
             await fetchAttemptsForTest(id);
         } catch (e) {
             setError(
-                e instanceof ApiError ? e.message : "Failed to close test"
+                e instanceof ApiError ? e.message : "Failed to close test",
             );
         } finally {
             setLoading(false);
@@ -78,10 +78,10 @@ export function TestAnalyticsPage() {
     return (
         <div className="max-w-4xl mx-auto px-4 py-24 sm:py-32">
             <button
-                onClick={() => navigate("/dashboard")}
+                onClick={() => navigate("/my-tests")}
                 className="text-blue-600 hover:underline mb-6"
             >
-                &larr; Back to Dashboard
+                &larr; Back to My Tests
             </button>
             <div className="flex items-start justify-between mb-2 gap-4">
                 <h1 className="text-3xl sm:text-4xl font-bold">
@@ -169,17 +169,17 @@ export function TestAnalyticsPage() {
                                         idx === 0
                                             ? "🥇"
                                             : idx === 1
-                                            ? "🥈"
-                                            : idx === 2
-                                            ? "🥉"
-                                            : null;
+                                              ? "🥈"
+                                              : idx === 2
+                                                ? "🥉"
+                                                : null;
                                     return (
                                         <tr
                                             key={a.id}
                                             className="hover:bg-gray-50 cursor-pointer"
                                             onClick={() =>
                                                 navigate(
-                                                    `/tests/${id}/attempts/${a.id}`
+                                                    `/tests/${id}/attempts/${a.id}`,
                                                 )
                                             }
                                         >
@@ -200,14 +200,14 @@ export function TestAnalyticsPage() {
                                             <td className="px-6 py-3 text-xs text-gray-600">
                                                 {a.startedAt
                                                     ? new Date(
-                                                          a.startedAt
+                                                          a.startedAt,
                                                       ).toLocaleString()
                                                     : "—"}
                                             </td>
                                             <td className="px-6 py-3 text-xs text-gray-600">
                                                 {a.submittedAt
                                                     ? new Date(
-                                                          a.submittedAt
+                                                          a.submittedAt,
                                                       ).toLocaleString()
                                                     : "—"}
                                             </td>

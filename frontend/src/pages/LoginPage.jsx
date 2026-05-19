@@ -20,7 +20,7 @@ export function LoginPage() {
         }
         try {
             await login({ email, password });
-            navigate("/dashboard");
+            navigate("/learning");
         } catch {
             // handled in context
         }

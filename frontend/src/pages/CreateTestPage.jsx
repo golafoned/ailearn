@@ -4,16 +4,17 @@ import { IconUpload, IconArrowRight } from "../components/Icons";
 import { useNavigate, useLocation } from "react-router-dom";
 import { apiFetch, ApiError } from "../utils/apiClient";
 import { useTestData } from "../contexts/TestDataContext";
+import { parseFile, SUPPORTED_EXTENSIONS } from "../utils/fileParser";
 
 export function CreateTestPage() {
     const location = useLocation();
-    
+
     // Core inputs
     const [sourceMode, setSourceMode] = useState("topic"); // "topic" or "file"
     const [topic, setTopic] = useState(location.state?.topic || "");
     const [fileName, setFileName] = useState("");
     const [fileObj, setFileObj] = useState(null);
-    
+
     // Params
     const [title, setTitle] = useState("");
     const [questions, setQuestions] = useState(10);
@@ -72,29 +73,17 @@ export function CreateTestPage() {
         } catch {
             /* ignore */
         }
-    }, [
-        questions,
-        timeLimit,
-        difficulty,
-        instructions,
-        expiresInMinutes,
-    ]);
+    }, [questions, timeLimit, difficulty, instructions, expiresInMinutes]);
 
-    const readTextFile = async (file) => {
+    const readSourceFile = async (file) => {
         if (!file) return "";
-        if (!/\.txt$/i.test(file.name)) {
-            throw new Error("Only .txt files are supported at this time.");
-        }
-        const raw = await file.text();
-        return raw
-            .replace(/\r\n?/g, "\n")
-            .replace(/\n{3,}/g, "\n\n")
-            .trim();
+        const result = await parseFile(file);
+        return result.text;
     };
 
     const pollForQuestions = async (
         code,
-        { timeoutMs = 120000, intervalMs = 1500 }
+        { timeoutMs = 120000, intervalMs = 1500 },
     ) => {
         const start = Date.now();
         while (Date.now() - start < timeoutMs) {
@@ -126,15 +115,19 @@ export function CreateTestPage() {
         try {
             let finalSourceText = "";
             let generatedTitle = title;
-            
+
             if (sourceMode === "file") {
                 if (!fileObj) throw new Error("Please upload a file first.");
-                finalSourceText = await readTextFile(fileObj);
-                if (!finalSourceText) throw new Error("File is empty or unreadable.");
-                if (!generatedTitle) generatedTitle = fileName.replace(/\.[^.]+$/, "");
+                finalSourceText = await readSourceFile(fileObj);
+                if (!finalSourceText)
+                    throw new Error("File is empty or unreadable.");
+                if (!generatedTitle)
+                    generatedTitle = fileName.replace(/\.[^.]+$/, "");
             } else {
-                if (!topic.trim()) throw new Error("Please enter a topic to test.");
-                if (!generatedTitle) generatedTitle = `Test: ${topic.slice(0, 50)}`;
+                if (!topic.trim())
+                    throw new Error("Please enter a topic to test.");
+                if (!generatedTitle)
+                    generatedTitle = `Test: ${topic.slice(0, 50)}`;
             }
 
             const payload = {
@@ -154,7 +147,7 @@ export function CreateTestPage() {
             });
             if (!genResp || !genResp.code)
                 throw new Error("Generation response missing test code.");
-            
+
             setLastGeneratedCode(genResp.code);
             addLocalGeneratedTest({
                 id: genResp.id,
@@ -163,7 +156,7 @@ export function CreateTestPage() {
                 createdAt: new Date().toISOString(),
                 expiresAt: genResp.expiresAt,
             });
-            
+
             const full = await pollForQuestions(genResp.code, {});
             setPreviewTest(full);
             navigate("/generated");
@@ -173,7 +166,7 @@ export function CreateTestPage() {
             setError(
                 e instanceof ApiError
                     ? e.message
-                    : e.message || "Generation failed"
+                    : e.message || "Generation failed",
             );
         } finally {
             setIsGenerating(false);
@@ -199,12 +192,20 @@ export function CreateTestPage() {
                     <span className="text-xl">←</span>
                 </button>
                 <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 leading-tight">
-                    Generate Practice Test
+                    Create Custom Test
                 </h1>
             </div>
+            <p className="text-sm text-gray-500 mb-6">
+                Want quick practice instead?{" "}
+                <button
+                    onClick={() => navigate("/learning/start")}
+                    className="text-blue-600 hover:underline font-medium"
+                >
+                    Start a topic-based session →
+                </button>
+            </p>
 
             <div className="bg-white rounded-2xl p-6 md:p-8 border border-gray-200 shadow-sm space-y-8">
-                
                 {/* Source Selection Toggle */}
                 <div className="flex p-1 bg-gray-100 rounded-lg">
                     <button
@@ -244,7 +245,8 @@ export function CreateTestPage() {
                                 className="w-full border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors shadow-sm"
                             />
                             <p className="text-xs text-gray-500 mt-2">
-                                Be as general or specific as you want. AI will generate questions based on this knowledge.
+                                Be as general or specific as you want. AI will
+                                generate questions based on this knowledge.
                             </p>
                         </div>
                     ) : (
@@ -284,7 +286,7 @@ export function CreateTestPage() {
                                 <input
                                     id="dropzone-file"
                                     type="file"
-                                    accept=".txt"
+                                    accept=".txt,.md,.pdf"
                                     className="hidden"
                                     onChange={handleFileChange}
                                 />
@@ -297,7 +299,10 @@ export function CreateTestPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-gray-100">
                     <div>
                         <label className="block mb-2 text-sm font-medium text-gray-700">
-                            Number of Questions: <span className="text-blue-600 font-bold">{questions}</span>
+                            Number of Questions:{" "}
+                            <span className="text-blue-600 font-bold">
+                                {questions}
+                            </span>
                         </label>
                         <input
                             type="range"
@@ -305,7 +310,9 @@ export function CreateTestPage() {
                             max="50"
                             step="5"
                             value={questions}
-                            onChange={(e) => setQuestions(Number(e.target.value))}
+                            onChange={(e) =>
+                                setQuestions(Number(e.target.value))
+                            }
                             className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
                         />
                         <div className="flex justify-between text-xs text-gray-500 mt-2 px-1">
@@ -332,7 +339,10 @@ export function CreateTestPage() {
 
                     <div>
                         <label className="block mb-2 text-sm font-medium text-gray-700">
-                            Time Limit: <span className="text-blue-600 font-bold">{timeLimit} mins</span>
+                            Time Limit:{" "}
+                            <span className="text-blue-600 font-bold">
+                                {timeLimit} mins
+                            </span>
                         </label>
                         <input
                             type="range"
@@ -340,7 +350,9 @@ export function CreateTestPage() {
                             max="120"
                             step="5"
                             value={timeLimit}
-                            onChange={(e) => setTimeLimit(Number(e.target.value))}
+                            onChange={(e) =>
+                                setTimeLimit(Number(e.target.value))
+                            }
                             className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
                         />
                     </div>
@@ -354,7 +366,11 @@ export function CreateTestPage() {
                             value={title}
                             maxLength={120}
                             onChange={(e) => setTitle(e.target.value)}
-                            placeholder={sourceMode === "file" && fileName ? fileName.replace(/\.[^.]+$/, "") : "Leave blank to auto-generate"}
+                            placeholder={
+                                sourceMode === "file" && fileName
+                                    ? fileName.replace(/\.[^.]+$/, "")
+                                    : "Leave blank to auto-generate"
+                            }
                             className="w-full border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm"
                         />
                     </div>
@@ -389,13 +405,16 @@ export function CreateTestPage() {
                     >
                         Cancel
                     </Button>
-                    
+
                     {isGenerating ? (
                         <div className="flex gap-3">
                             <Button variant="secondary" onClick={handleAbort}>
                                 Stop
                             </Button>
-                            <Button disabled className="min-w-[150px] justify-center bg-blue-500 opacity-90 cursor-wait">
+                            <Button
+                                disabled
+                                className="min-w-[150px] justify-center bg-blue-500 opacity-90 cursor-wait"
+                            >
                                 <div className="flex items-center gap-2">
                                     <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin"></div>
                                     Generating...
@@ -403,12 +422,17 @@ export function CreateTestPage() {
                             </Button>
                         </div>
                     ) : (
-                        <Button 
+                        <Button
                             onClick={handleGenerate}
                             className="min-w-[150px] justify-center text-base bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md"
-                            disabled={sourceMode === "topic" ? !topic.trim() : !fileObj}
+                            disabled={
+                                sourceMode === "topic"
+                                    ? !topic.trim()
+                                    : !fileObj
+                            }
                         >
-                            Generate Test <IconArrowRight className="ml-2 w-4 h-4" />
+                            Generate Test{" "}
+                            <IconArrowRight className="ml-2 w-4 h-4" />
                         </Button>
                     )}
                 </div>

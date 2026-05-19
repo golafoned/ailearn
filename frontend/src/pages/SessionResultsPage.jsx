@@ -30,7 +30,7 @@ export function SessionResultsPage() {
 
     const totalMasteryGain = masteryChanges.reduce(
         (sum, c) => sum + (c.change || 0),
-        0
+        0,
     );
 
     return (
@@ -138,8 +138,8 @@ export function SessionResultsPage() {
                                                     isImprovement
                                                         ? "text-green-600"
                                                         : isDecline
-                                                        ? "text-red-600"
-                                                        : "text-gray-600"
+                                                          ? "text-red-600"
+                                                          : "text-gray-600"
                                                 }`}
                                             >
                                                 →
@@ -149,8 +149,8 @@ export function SessionResultsPage() {
                                                     isImprovement
                                                         ? "text-green-600"
                                                         : isDecline
-                                                        ? "text-red-600"
-                                                        : "text-gray-600"
+                                                          ? "text-red-600"
+                                                          : "text-gray-600"
                                                 }`}
                                             >
                                                 {change.after}%
@@ -160,8 +160,8 @@ export function SessionResultsPage() {
                                                     isImprovement
                                                         ? "text-green-600"
                                                         : isDecline
-                                                        ? "text-red-600"
-                                                        : "text-gray-600"
+                                                          ? "text-red-600"
+                                                          : "text-gray-600"
                                                 }`}
                                             >
                                                 ({isImprovement ? "+" : ""}
@@ -203,7 +203,7 @@ export function SessionResultsPage() {
                                                 key={idx}
                                                 name={concept}
                                             />
-                                        )
+                                        ),
                                     )}
                                 </div>
                             </div>
@@ -213,7 +213,7 @@ export function SessionResultsPage() {
                             📅 Next review suggested:{" "}
                             <span className="font-semibold">
                                 {new Date(
-                                    nextRecommendation.suggestedDate
+                                    nextRecommendation.suggestedDate,
                                 ).toLocaleDateString()}
                             </span>
                         </p>
@@ -224,7 +224,22 @@ export function SessionResultsPage() {
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-4">
                 <button
-                    onClick={() => navigate("/learning/practice/create")}
+                    onClick={() =>
+                        navigate("/learning/practice/create", {
+                            state: {
+                                sessionType:
+                                    results.sessionType || "quick_practice",
+                                conceptSelection: results.concepts?.length
+                                    ? "custom"
+                                    : undefined,
+                                customConcepts:
+                                    results.concepts?.map(
+                                        (c) => c.name || c.concept || c,
+                                    ) || masteryChanges.map((c) => c.concept),
+                                topic: results.topic,
+                            },
+                        })
+                    }
                     className="flex-1 px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg font-bold text-lg"
                 >
                     Practice Again
@@ -233,7 +248,7 @@ export function SessionResultsPage() {
                     onClick={() => navigate("/learning")}
                     className="flex-1 px-6 py-4 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-medium text-lg"
                 >
-                    Back to Dashboard
+                    Back to Learning
                 </button>
             </div>
 

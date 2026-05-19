@@ -76,7 +76,7 @@ export function TestDataProvider({ children }) {
                 setLoading(false);
             }
         },
-        [toast]
+        [toast],
     );
 
     // Start attempt (public)
@@ -113,7 +113,7 @@ export function TestDataProvider({ children }) {
                 setLoading(false);
             }
         },
-        [toast]
+        [toast],
     );
 
     // Submit attempt answers
@@ -151,7 +151,7 @@ export function TestDataProvider({ children }) {
                 setLoading(false);
             }
         },
-        [toast]
+        [toast],
     );
 
     // Participant fetch own attempt detail (after submission)
@@ -182,7 +182,7 @@ export function TestDataProvider({ children }) {
             setError(null);
             try {
                 const resp = await apiFetch(
-                    `/api/v1/tests/${testId}/attempts/${attemptId}`
+                    `/api/v1/tests/${testId}/attempts/${attemptId}`,
                 );
                 setOwnerAttemptDetail(resp);
                 return resp;
@@ -196,7 +196,7 @@ export function TestDataProvider({ children }) {
                 setLoading(false);
             }
         },
-        []
+        [],
     );
 
     // Leaderboard fetch
@@ -206,7 +206,13 @@ export function TestDataProvider({ children }) {
         setError(null);
         try {
             const resp = await apiFetch(`/api/v1/tests/${testId}/leaderboard`);
-            setLeaderboard(resp.entries || resp || []);
+            setLeaderboard(
+                Array.isArray(resp.leaderboard)
+                    ? resp.leaderboard
+                    : Array.isArray(resp)
+                      ? resp
+                      : [],
+            );
             return resp.entries || resp || [];
         } catch (e) {
             if (e instanceof ApiError) {
@@ -231,8 +237,8 @@ export function TestDataProvider({ children }) {
             // Update tests list local state if present
             setTests((prev) =>
                 prev.map((t) =>
-                    t.id === testId ? { ...t, closedAt: resp.closedAt } : t
-                )
+                    t.id === testId ? { ...t, closedAt: resp.closedAt } : t,
+                ),
             );
             return resp;
         } catch (e) {
@@ -295,10 +301,10 @@ export function TestDataProvider({ children }) {
             setError(null);
             try {
                 const data = await apiFetch(
-                    `/api/v1/tests/mine?page=${page}&pageSize=${pageSize}`
+                    `/api/v1/tests/mine?page=${page}&pageSize=${pageSize}`,
                 );
                 setTests((prev) =>
-                    append ? [...prev, ...data.items] : data.items
+                    append ? [...prev, ...data.items] : data.items,
                 );
                 setTestsPageInfo({
                     page: data.page,
@@ -317,12 +323,12 @@ export function TestDataProvider({ children }) {
                 setLoading(false);
             }
         },
-        []
+        [],
     );
 
     const getTestById = useCallback(
         (id) => tests.find((t) => t.id === id) || null,
-        [tests]
+        [tests],
     );
 
     // Generate review test
@@ -363,7 +369,7 @@ export function TestDataProvider({ children }) {
                 setLoading(false);
             }
         },
-        [toast]
+        [toast],
     );
 
     // Fetch review tests list
@@ -497,7 +503,7 @@ export function TestDataProvider({ children }) {
             fetchReviewTests,
             fetchRecommendations,
             invalidateRecommendations,
-        ]
+        ],
     );
 
     return (

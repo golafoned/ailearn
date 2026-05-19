@@ -25,7 +25,7 @@ export function RegisterPage() {
         }
         try {
             await register({ email, password, displayName });
-            navigate("/dashboard");
+            navigate("/learning");
         } catch {
             /* context sets error */
         }

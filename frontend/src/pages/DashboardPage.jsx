@@ -3,7 +3,6 @@ import { Button } from "../components/Button";
 import { IconClock, IconCalendar } from "../components/Icons";
 import { useTestData } from "../contexts/TestDataContext";
 import { useNavigate } from "react-router-dom";
-import { RecommendationsPanel } from "../components/RecommendationsPanel";
 import { useToast } from "../contexts/ToastContext";
 
 export function DashboardPage() {
@@ -63,7 +62,7 @@ export function DashboardPage() {
         e.stopPropagation();
         if (
             !confirm(
-                "Are you sure you want to close this test? No new attempts will be allowed."
+                "Are you sure you want to close this test? No new attempts will be allowed.",
             )
         ) {
             return;
@@ -94,21 +93,26 @@ export function DashboardPage() {
     return (
         <div className="max-w-7xl mx-auto px-4 py-24 sm:py-32">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-10">
-                <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">
-                    Your Learning Hub
-                </h1>
+                <div>
+                    <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">
+                        📝 My Tests
+                    </h1>
+                    <p className="text-gray-500 mt-1">
+                        Create, manage, and share tests
+                    </p>
+                </div>
                 <div className="flex gap-3">
-                    <Button onClick={() => navigate("/learning")} variant="secondary" className="bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100">
-                        Adaptive Learning
+                    <Button
+                        onClick={() => navigate("/learning")}
+                        variant="secondary"
+                        className="bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100"
+                    >
+                        ← Back to Learning
                     </Button>
                     <Button onClick={() => navigate("/create")}>
-                        Create New Test
+                        + Create New Test
                     </Button>
                 </div>
-            </div>
-            {/* Recommendations Panel */}
-            <div className="mb-8">
-                <RecommendationsPanel />
             </div>
 
             <div className="mb-8 border-b border-gray-200">
@@ -208,17 +212,17 @@ export function DashboardPage() {
                                                 {isClosed
                                                     ? "🔒 CLOSED"
                                                     : isExpired
-                                                    ? "⏰ EXPIRED"
-                                                    : "✅ ACTIVE"}
+                                                      ? "⏰ EXPIRED"
+                                                      : "✅ ACTIVE"}
                                             </span>
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     navigator.clipboard.writeText(
-                                                        t.code
+                                                        t.code,
                                                     );
                                                     alert(
-                                                        `Code ${t.code} copied!`
+                                                        `Code ${t.code} copied!`,
                                                     );
                                                 }}
                                                 className="text-xs text-gray-500 hover:text-blue-600 font-mono font-bold"
@@ -237,7 +241,7 @@ export function DashboardPage() {
                                             <span>📅 Created:</span>
                                             <span className="font-medium">
                                                 {new Date(
-                                                    t.createdAt
+                                                    t.createdAt,
                                                 ).toLocaleDateString()}
                                             </span>
                                         </div>
@@ -245,7 +249,7 @@ export function DashboardPage() {
                                             <span>⏰ Expires:</span>
                                             <span className="font-medium">
                                                 {new Date(
-                                                    t.expiresAt
+                                                    t.expiresAt,
                                                 ).toLocaleDateString()}
                                             </span>
                                         </div>
@@ -269,10 +273,10 @@ export function DashboardPage() {
                                                 e.stopPropagation();
                                                 const url = `${window.location.origin}/code/${t.code}`;
                                                 navigator.clipboard.writeText(
-                                                    url
+                                                    url,
                                                 );
                                                 toast.success(
-                                                    "Test link copied!"
+                                                    "Test link copied!",
                                                 );
                                             }}
                                             className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-xs font-medium"
@@ -372,7 +376,7 @@ export function DashboardPage() {
                                             <td className="py-3 pr-4 text-xs text-gray-600">
                                                 {a.startedAt
                                                     ? new Date(
-                                                          a.startedAt
+                                                          a.startedAt,
                                                       ).toLocaleString()
                                                     : "—"}
                                             </td>
@@ -382,8 +386,8 @@ export function DashboardPage() {
                                                         a.score >= 80
                                                             ? "text-green-600"
                                                             : a.score >= 60
-                                                            ? "text-yellow-600"
-                                                            : "text-red-600"
+                                                              ? "text-yellow-600"
+                                                              : "text-red-600"
                                                     }`}
                                                 >
                                                     {a.score == null
@@ -432,10 +436,18 @@ export function DashboardPage() {
                                 your knowledge.
                             </p>
                             <div className="flex gap-3 justify-center">
-                                <Button onClick={() => navigate("/learning/practice")} className="bg-purple-600 hover:bg-purple-700 text-white">
+                                <Button
+                                    onClick={() =>
+                                        navigate("/learning/practice")
+                                    }
+                                    className="bg-purple-600 hover:bg-purple-700 text-white"
+                                >
                                     Start Practice Session
                                 </Button>
-                                <Button variant="secondary" onClick={() => setActiveTab("myResults")}>
+                                <Button
+                                    variant="secondary"
+                                    onClick={() => setActiveTab("myResults")}
+                                >
                                     View Activity
                                 </Button>
                             </div>
@@ -479,7 +491,7 @@ export function DashboardPage() {
                                         className={`border-2 rounded-xl p-5 bg-gradient-to-br hover:shadow-lg transition-all cursor-pointer ${containerClass}`}
                                         onClick={() =>
                                             navigate(
-                                                `/review-tests/${test.code}`
+                                                `/review-tests/${test.code}`,
                                             )
                                         }
                                     >
@@ -507,7 +519,7 @@ export function DashboardPage() {
                                                 <span className="font-medium capitalize">
                                                     {test.strategy?.replace(
                                                         /_/g,
-                                                        " "
+                                                        " ",
                                                     ) || "N/A"}
                                                 </span>
                                             </div>
@@ -526,7 +538,7 @@ export function DashboardPage() {
                                                 <span className="text-xs">
                                                     {test.createdAt
                                                         ? new Date(
-                                                              test.createdAt
+                                                              test.createdAt,
                                                           ).toLocaleDateString()
                                                         : "—"}
                                                 </span>
@@ -537,9 +549,7 @@ export function DashboardPage() {
                                             className="w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all font-medium shadow-md flex items-center justify-center gap-2"
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                navigate(
-                                                    `/code/${test.code}`
-                                                );
+                                                navigate(`/code/${test.code}`);
                                             }}
                                         >
                                             Take Review Test <span>→</span>

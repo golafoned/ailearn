@@ -25,7 +25,7 @@ describe("Learning Endpoints", () => {
             await db.run(
                 `INSERT INTO user_concepts (id, user_id, concept_name, mastery_level, total_attempts, correct_attempts, difficulty_level, created_at, last_practiced_at)
                  VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
-                [id, userId, concept.name, concept.mastery, 10, 5, "medium"]
+                [id, userId, concept.name, concept.mastery, 10, 5, "medium"],
             );
         }
     }
@@ -83,7 +83,7 @@ describe("Learning Endpoints", () => {
                     "Cellular Respiration",
                     "DNA Replication",
                 ]),
-            ]
+            ],
         );
 
         return { id, code, questions };
@@ -224,7 +224,7 @@ describe("Learning Endpoints", () => {
             if (res.body.weakConcepts.length > 0) {
                 expect(res.body.weakConcepts[0]).toHaveProperty("priority");
                 expect(res.body.weakConcepts[0]).toHaveProperty(
-                    "recommendation"
+                    "recommendation",
                 );
             }
         });
@@ -422,13 +422,14 @@ describe("Learning Endpoints", () => {
     });
 
     describe("GET /api/v1/learning/concepts/:name/details", () => {
-        it("should return 404 for non-existent concept", async () => {
+        it("should auto-create and return details for new concept", async () => {
             const res = await request(app)
                 .get("/api/v1/learning/concepts/NonExistentConcept/details")
                 .set("Authorization", `Bearer ${authToken}`);
 
-            expect(res.status).toBe(404);
-            expect(res.body.error.code).toBe("CONCEPT_NOT_FOUND");
+            expect(res.status).toBe(200);
+            expect(res.body.concept.name).toBe("NonExistentConcept");
+            expect(res.body.concept.mastery).toBe(0);
         });
     });
 
@@ -464,7 +465,7 @@ describe("Learning Endpoints", () => {
                     "adaptive",
                     mockTest.questions.length,
                     fullTestId,
-                ]
+                ],
             );
 
             // Step 4: Start the test
@@ -480,7 +481,7 @@ describe("Learning Endpoints", () => {
                 console.log(
                     "Start failed:",
                     adaptiveStartRes.status,
-                    adaptiveStartRes.body
+                    adaptiveStartRes.body,
                 );
             }
             expect(adaptiveStartRes.status).toBe(201); // /start returns 201, not 200
@@ -516,7 +517,7 @@ describe("Learning Endpoints", () => {
 
             expect(finalDashRes.status).toBe(200);
             expect(
-                finalDashRes.body.thisWeek.sessionsCompleted
+                finalDashRes.body.thisWeek.sessionsCompleted,
             ).toBeGreaterThan(0);
 
             // Step 6: Check session history
@@ -533,8 +534,8 @@ describe("Learning Endpoints", () => {
             const conceptRes = await request(app)
                 .get(
                     `/api/v1/learning/concepts/${encodeURIComponent(
-                        conceptName
-                    )}/details`
+                        conceptName,
+                    )}/details`,
                 )
                 .set("Authorization", `Bearer ${authToken}`);
 

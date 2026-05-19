@@ -19,6 +19,8 @@ import { SessionResultsPage } from "./pages/SessionResultsPage";
 import { ConceptDetailPage } from "./pages/ConceptDetailPage";
 import { FlashcardsPage } from "./pages/FlashcardsPage";
 import { FlashcardDeckPage } from "./pages/FlashcardDeckPage";
+import { TopicStartPage } from "./pages/TopicStartPage";
+import { StudentResultsPage } from "./pages/StudentResultsPage";
 import { useAuth } from "./contexts/AuthContext";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
@@ -37,83 +39,21 @@ export default function App() {
                     <Route path="/" element={<HomePage />} />
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/register" element={<RegisterPage />} />
-                    <Route
-                        path="/dashboard"
-                        element={
-                            <PrivateRoute>
-                                <DashboardPage />
-                            </PrivateRoute>
-                        }
-                    />
-                    <Route
-                        path="/create"
-                        element={
-                            <PrivateRoute>
-                                <CreateTestPage />
-                            </PrivateRoute>
-                        }
-                    />
-                    {/* Public landing by code */}
-                    <Route path="/code/:code" element={<TestLandingPage />} />
-                    {/* Authenticated preview immediately after generation (still using TestTakingPage) */}
-                    <Route
-                        path="/preview"
-                        element={
-                            <PrivateRoute>
-                                <TestTakingPage />
-                            </PrivateRoute>
-                        }
-                    />
-                    {/* Active attempt route (after starting) */}
-                    <Route path="/attempt" element={<TestTakingPage />} />
-                    <Route path="/generated" element={<TestGeneratedPage />} />
-                    <Route
-                        path="/profile"
-                        element={
-                            <PrivateRoute>
-                                <ProfilePage />
-                            </PrivateRoute>
-                        }
-                    />
-                    <Route
-                        path="/tests/:id/analytics"
-                        element={
-                            <PrivateRoute>
-                                <TestAnalyticsPage />
-                            </PrivateRoute>
-                        }
-                    />
-                    <Route
-                        path="/tests/:testId/attempts/:attemptId"
-                        element={
-                            <PrivateRoute>
-                                <AttemptDetailPage />
-                            </PrivateRoute>
-                        }
-                    />
-                    <Route
-                        path="/attempts/:attemptId"
-                        element={
-                            <PrivateRoute>
-                                <MyAttemptDetailPage />
-                            </PrivateRoute>
-                        }
-                    />
-                    {/* Review test routes */}
-                    <Route
-                        path="/review-tests/:code"
-                        element={
-                            <PrivateRoute>
-                                <ReviewTestLandingPage />
-                            </PrivateRoute>
-                        }
-                    />
-                    {/* Adaptive Learning routes */}
+
+                    {/* Learning (primary flow) */}
                     <Route
                         path="/learning"
                         element={
                             <PrivateRoute>
                                 <LearningDashboardPage />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/learning/start"
+                        element={
+                            <PrivateRoute>
+                                <TopicStartPage />
                             </PrivateRoute>
                         }
                     />
@@ -149,6 +89,8 @@ export default function App() {
                             </PrivateRoute>
                         }
                     />
+
+                    {/* Flashcards */}
                     <Route
                         path="/flashcards"
                         element={
@@ -165,6 +107,95 @@ export default function App() {
                             </PrivateRoute>
                         }
                     />
+
+                    {/* Test results for students */}
+                    <Route
+                        path="/results"
+                        element={
+                            <PrivateRoute>
+                                <StudentResultsPage />
+                            </PrivateRoute>
+                        }
+                    />
+
+                    {/* My Tests (secondary — test management) */}
+                    <Route
+                        path="/my-tests"
+                        element={
+                            <PrivateRoute>
+                                <DashboardPage />
+                            </PrivateRoute>
+                        }
+                    />
+                    {/* Redirect old /dashboard to /my-tests */}
+                    <Route
+                        path="/dashboard"
+                        element={<Navigate to="/my-tests" replace />}
+                    />
+                    <Route
+                        path="/create"
+                        element={
+                            <PrivateRoute>
+                                <CreateTestPage />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/tests/:id/analytics"
+                        element={
+                            <PrivateRoute>
+                                <TestAnalyticsPage />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/tests/:testId/attempts/:attemptId"
+                        element={
+                            <PrivateRoute>
+                                <AttemptDetailPage />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/attempts/:attemptId"
+                        element={
+                            <PrivateRoute>
+                                <MyAttemptDetailPage />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/review-tests/:code"
+                        element={
+                            <PrivateRoute>
+                                <ReviewTestLandingPage />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route path="/generated" element={<TestGeneratedPage />} />
+
+                    {/* Public test routes */}
+                    <Route path="/code/:code" element={<TestLandingPage />} />
+                    <Route
+                        path="/preview"
+                        element={
+                            <PrivateRoute>
+                                <TestTakingPage />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route path="/attempt" element={<TestTakingPage />} />
+
+                    {/* Profile */}
+                    <Route
+                        path="/profile"
+                        element={
+                            <PrivateRoute>
+                                <ProfilePage />
+                            </PrivateRoute>
+                        }
+                    />
+
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
             </main>

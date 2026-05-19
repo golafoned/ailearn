@@ -3,50 +3,153 @@ import { logger } from "../config/logger.js";
 
 export class AchievementService {
     /**
-     * Achievement definitions
+     * Achievement definitions — 17 total across 4 categories
      */
     static ACHIEVEMENTS = {
+        // Streak achievements
+        streak_3: {
+            name: "Getting Started",
+            description: "Practice 3 days in a row",
+            total: 3,
+            type: "streak",
+            icon: "🔥",
+            category: "streaks",
+        },
         streak_7: {
             name: "Week Warrior",
             description: "Practice 7 days in a row",
             total: 7,
             type: "streak",
+            icon: "🔥",
+            category: "streaks",
+        },
+        streak_14: {
+            name: "Two-Week Streak",
+            description: "Practice 14 days in a row",
+            total: 14,
+            type: "streak",
+            icon: "🔥",
+            category: "streaks",
         },
         streak_30: {
-            name: "30-Day Champion",
+            name: "Monthly Master",
             description: "Practice 30 days in a row",
             total: 30,
             type: "streak",
+            icon: "🔥",
+            category: "streaks",
+        },
+
+        // Concept mastery achievements
+        concepts_5: {
+            name: "First Steps",
+            description: "Master 5 concepts (≥80% mastery)",
+            total: 5,
+            type: "concepts_mastered",
+            icon: "📚",
+            category: "mastery",
         },
         concepts_10: {
-            name: "Getting Started",
+            name: "Knowledge Builder",
             description: "Master 10 concepts",
             total: 10,
             type: "concepts_mastered",
+            icon: "📚",
+            category: "mastery",
+        },
+        concepts_25: {
+            name: "Subject Expert",
+            description: "Master 25 concepts",
+            total: 25,
+            type: "concepts_mastered",
+            icon: "📚",
+            category: "mastery",
         },
         concepts_50: {
-            name: "Bookworm",
+            name: "Walking Encyclopedia",
             description: "Master 50 concepts",
             total: 50,
             type: "concepts_mastered",
+            icon: "📚",
+            category: "mastery",
         },
-        concepts_100: {
-            name: "Scholar",
-            description: "Master 100 concepts",
-            total: 100,
-            type: "concepts_mastered",
+
+        // Session milestones
+        sessions_5: {
+            name: "Getting Warmed Up",
+            description: "Complete 5 practice sessions",
+            total: 5,
+            type: "sessions_completed",
+            icon: "🎯",
+            category: "sessions",
         },
-        perfect_10: {
-            name: "Perfectionist",
-            description: "Complete 10 perfect sessions",
-            total: 10,
-            type: "perfect_sessions",
+        sessions_25: {
+            name: "Dedicated Learner",
+            description: "Complete 25 practice sessions",
+            total: 25,
+            type: "sessions_completed",
+            icon: "🎯",
+            category: "sessions",
         },
         sessions_50: {
-            name: "Dedicated Learner",
+            name: "Practice Makes Perfect",
             description: "Complete 50 practice sessions",
             total: 50,
             type: "sessions_completed",
+            icon: "🎯",
+            category: "sessions",
+        },
+        sessions_100: {
+            name: "Centurion",
+            description: "Complete 100 practice sessions",
+            total: 100,
+            type: "sessions_completed",
+            icon: "🎯",
+            category: "sessions",
+        },
+
+        // Perfect scores
+        perfect_1: {
+            name: "First Perfect",
+            description: "Get your first 100% score",
+            total: 1,
+            type: "perfect_sessions",
+            icon: "💯",
+            category: "perfect_scores",
+        },
+        perfect_5: {
+            name: "Sharpshooter",
+            description: "Get 5 perfect scores",
+            total: 5,
+            type: "perfect_sessions",
+            icon: "💯",
+            category: "perfect_scores",
+        },
+        perfect_10: {
+            name: "Perfectionist",
+            description: "Get 10 perfect scores",
+            total: 10,
+            type: "perfect_sessions",
+            icon: "💯",
+            category: "perfect_scores",
+        },
+
+        // Flashcard achievements
+        cards_created_25: {
+            name: "Card Crafter",
+            description: "Create 25 flashcards",
+            total: 25,
+            type: "flashcard_cards",
+            icon: "🃏",
+            category: "flashcards",
+        },
+        cards_studied_100: {
+            name: "Card Scholar",
+            description: "Study 100 flashcards",
+            total: 100,
+            type: "flashcard_reviews",
+            icon: "🃏",
+            category: "flashcards",
         },
     };
 
@@ -62,13 +165,13 @@ export class AchievementService {
 
         if (event === "session_complete") {
             earned.push(
-                ...(await this._checkSessionAchievements(userId, data))
+                ...(await this._checkSessionAchievements(userId, data)),
             );
         }
 
         if (event === "concept_mastered") {
             earned.push(
-                ...(await this._checkConceptAchievements(userId, data))
+                ...(await this._checkConceptAchievements(userId, data)),
             );
         }
 
@@ -76,34 +179,53 @@ export class AchievementService {
             earned.push(...(await this._checkStreakAchievements(userId, data)));
         }
 
+        if (event === "flashcard_card_created") {
+            earned.push(...(await this._checkFlashcardCreated(userId, data)));
+        }
+
+        if (event === "flashcard_reviewed") {
+            earned.push(...(await this._checkFlashcardReviewed(userId, data)));
+        }
+
         return earned;
     }
 
     async _checkSessionAchievements(userId, data) {
         const earned = [];
-        const { sessionCount, perfectSession } = data;
+        const { sessionCount, perfectSession, perfectCount } = data;
 
-        // Sessions completed
+        // Sessions completed milestones
         if (sessionCount) {
-            const achievement = await this._updateAchievement(
-                userId,
-                "sessions_completed",
-                "sessions_50",
-                sessionCount
-            );
-            if (achievement?.earned) earned.push(achievement);
+            for (const [key, def] of Object.entries(
+                AchievementService.ACHIEVEMENTS,
+            )) {
+                if (def.type === "sessions_completed") {
+                    const achievement = await this._updateAchievement(
+                        userId,
+                        def.type,
+                        key,
+                        sessionCount,
+                    );
+                    if (achievement?.earned) earned.push(achievement);
+                }
+            }
         }
 
-        // Perfect sessions
-        if (perfectSession) {
-            const perfectCount = data.perfectCount || 1;
-            const achievement = await this._updateAchievement(
-                userId,
-                "perfect_sessions",
-                "perfect_10",
-                perfectCount
-            );
-            if (achievement?.earned) earned.push(achievement);
+        // Perfect sessions milestones
+        if (perfectSession && perfectCount) {
+            for (const [key, def] of Object.entries(
+                AchievementService.ACHIEVEMENTS,
+            )) {
+                if (def.type === "perfect_sessions") {
+                    const achievement = await this._updateAchievement(
+                        userId,
+                        def.type,
+                        key,
+                        perfectCount,
+                    );
+                    if (achievement?.earned) earned.push(achievement);
+                }
+            }
         }
 
         return earned;
@@ -115,19 +237,15 @@ export class AchievementService {
 
         if (!masteredCount) return earned;
 
-        // Check all concept milestones
         for (const [key, def] of Object.entries(
-            AchievementService.ACHIEVEMENTS
+            AchievementService.ACHIEVEMENTS,
         )) {
-            if (
-                def.type === "concepts_mastered" &&
-                masteredCount >= def.total
-            ) {
+            if (def.type === "concepts_mastered") {
                 const achievement = await this._updateAchievement(
                     userId,
                     def.type,
                     key,
-                    masteredCount
+                    masteredCount,
                 );
                 if (achievement?.earned) earned.push(achievement);
             }
@@ -142,20 +260,51 @@ export class AchievementService {
 
         if (!streak) return earned;
 
-        // Check streak milestones
         for (const [key, def] of Object.entries(
-            AchievementService.ACHIEVEMENTS
+            AchievementService.ACHIEVEMENTS,
         )) {
-            if (def.type === "streak" && streak >= def.total) {
+            if (def.type === "streak") {
                 const achievement = await this._updateAchievement(
                     userId,
                     def.type,
                     key,
-                    streak
+                    streak,
                 );
                 if (achievement?.earned) earned.push(achievement);
             }
         }
+
+        return earned;
+    }
+
+    async _checkFlashcardCreated(userId, data) {
+        const earned = [];
+        const { totalCards } = data;
+        if (!totalCards) return earned;
+
+        const achievement = await this._updateAchievement(
+            userId,
+            "flashcard_cards",
+            "cards_created_25",
+            totalCards,
+        );
+        if (achievement?.earned) earned.push(achievement);
+
+        return earned;
+    }
+
+    async _checkFlashcardReviewed(userId, data) {
+        const earned = [];
+        const { totalReviews } = data;
+        if (!totalReviews) return earned;
+
+        const achievement = await this._updateAchievement(
+            userId,
+            "flashcard_reviews",
+            "cards_studied_100",
+            totalReviews,
+        );
+        if (achievement?.earned) earned.push(achievement);
 
         return earned;
     }
@@ -167,7 +316,7 @@ export class AchievementService {
         let achievement = await this.achievementRepo.findByUserAndType(
             userId,
             type,
-            def.name
+            def.name,
         );
 
         if (!achievement) {
@@ -189,23 +338,26 @@ export class AchievementService {
                 : null;
         }
 
-        // Update existing
-        if (!achievement.earned_at && progress >= def.total) {
+        // Already earned — skip
+        if (achievement.earned_at) return null;
+
+        // Update progress
+        if (progress >= def.total) {
             await this.achievementRepo.updateProgress(
                 userId,
                 type,
                 def.name,
                 progress,
-                true
+                true,
             );
-            return { ...achievement, earned: true };
+            return { ...achievement, progress, earned: true };
         } else if (progress !== achievement.progress) {
             await this.achievementRepo.updateProgress(
                 userId,
                 type,
                 def.name,
                 progress,
-                false
+                false,
             );
         }
 
@@ -213,16 +365,16 @@ export class AchievementService {
     }
 
     /**
-     * Initialize achievement tracking for a user
+     * Initialize all achievement tracking for a new user
      */
     async initializeAchievements(userId) {
         for (const [key, def] of Object.entries(
-            AchievementService.ACHIEVEMENTS
+            AchievementService.ACHIEVEMENTS,
         )) {
             const existing = await this.achievementRepo.findByUserAndType(
                 userId,
                 def.type,
-                def.name
+                def.name,
             );
             if (!existing) {
                 await this.achievementRepo.create({
@@ -250,10 +402,10 @@ export class AchievementService {
         return {
             earned: achievements.filter((a) => a.earned_at),
             inProgress: achievements.filter(
-                (a) => !a.earned_at && a.progress > 0
+                (a) => !a.earned_at && a.progress > 0,
             ),
             locked: achievements.filter(
-                (a) => !a.earned_at && a.progress === 0
+                (a) => !a.earned_at && a.progress === 0,
             ),
             earnedCount,
             totalCount,

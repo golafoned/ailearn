@@ -35,7 +35,7 @@ const conceptService = new ConceptExtractionService();
 async function _ensureConcept(userId, conceptName) {
     let concept = await userConceptRepo.findByUserAndConcept(
         userId,
-        conceptName
+        conceptName,
     );
     if (!concept) {
         concept = await userConceptRepo.create({
@@ -98,7 +98,7 @@ async function _seedAttemptIfNone(userId, conceptName) {
     });
     logger.info(
         { userId, concept: conceptName, attemptId },
-        "Seed attempt created"
+        "Seed attempt created",
     );
     return testAttemptRepo.listByConcept(userId, conceptName, {
         includeInProgress: true,
@@ -122,7 +122,7 @@ export async function getDashboard(req, res, next) {
             chartData.length >= 2
                 ? masteryService.calculateImprovement(
                       chartData[0].avg_mastery,
-                      chartData[chartData.length - 1].avg_mastery
+                      chartData[chartData.length - 1].avg_mastery,
                   )
                 : 0;
 
@@ -213,8 +213,8 @@ export async function getWeakConcepts(req, res, next) {
                 c.mastery_level < 30
                     ? "high"
                     : c.mastery_level < 50
-                    ? "medium"
-                    : "low",
+                      ? "medium"
+                      : "low",
             attempts: c.total_attempts,
             lastPracticed: c.last_practiced_at,
             recommendation:
@@ -239,7 +239,7 @@ export async function getDueReviews(req, res, next) {
             const dueDate = new Date(c.next_review_due);
             const now = new Date();
             const daysDiff = Math.floor(
-                (now - dueDate) / (1000 * 60 * 60 * 24)
+                (now - dueDate) / (1000 * 60 * 60 * 24),
             );
 
             return {
@@ -269,10 +269,18 @@ export async function createSession(req, res, next) {
             sessionType,
             conceptSelection = "due",
             customConcepts = [],
-            topic,
+            topic: rawTopic,
             targetDifficulty = "adaptive",
             questionCount = 10,
+            sourceText: userSourceText,
         } = req.body;
+
+        // Derive topic from customConcepts[0] when conceptSelection is "topic" and no explicit topic field
+        const topic =
+            rawTopic ||
+            (conceptSelection === "topic" && customConcepts?.length
+                ? customConcepts[0]
+                : null);
 
         // Map API session types to database session types
         const sessionTypeMap = {
@@ -300,7 +308,7 @@ export async function createSession(req, res, next) {
             for (const name of customConcepts) {
                 const c = await userConceptRepo.findByUserAndConcept(
                     userId,
-                    name
+                    name,
                 );
                 if (c) selectedConcepts.push(c);
             }
@@ -324,11 +332,11 @@ export async function createSession(req, res, next) {
             }
             if (conceptSelection === "topic" && topic) {
                 // Topic-based practice doesn't fail if no prior concepts exist
-                selectedConcepts = []; 
+                selectedConcepts = [];
             } else if (selectedConcepts.length === 0) {
                 throw ApiError.badRequest(
                     "NO_CONCEPTS_AVAILABLE",
-                    "No concepts available for practice. Start a 'Quick Practice' by topic or complete a test first."
+                    "No concepts available for practice. Start a 'Quick Practice' by topic or complete a test first.",
                 );
             }
         }
@@ -343,56 +351,95 @@ export async function createSession(req, res, next) {
         // Generate questions
         let questions = [];
         let source_text = "";
-        
+
         if (conceptSelection === "topic" && topic) {
-            // Generate straight from topic
-            const { TestGenerationService } = await import("../services/testGenerationService.js");
+            // Generate straight from topic (optionally from user-provided source material)
+            const { TestGenerationService } =
+                await import("../services/testGenerationService.js");
             const genService = new TestGenerationService();
-            const schemaQuestions = await genService._callOpenRouterJSON(
-                genService._buildPrompt({
-                    sourceText: null,
-                    topic: topic,
-                    title: `${sessionType} Practice`,
-                    questionCount,
-                    difficulty: targetDifficulty === "adaptive" ? "medium" : targetDifficulty,
-                    extraInstructions: "Generate practice questions for this topic.",
-                }),
-                targetDifficulty === "hard" ? "openai/gpt-4o" : "openai/gpt-4o-mini"
-            );
-            
-            // Format to match adaptive questions
-            questions = schemaQuestions.questions.map(q => ({
+            const trimmedSource =
+                userSourceText?.trim()?.slice(0, 50000) || null;
+            const difficulty =
+                targetDifficulty === "adaptive" ? "medium" : targetDifficulty;
+            const model =
+                targetDifficulty === "hard"
+                    ? "openai/gpt-4o"
+                    : "openai/gpt-4o-mini";
+            const prompt = genService._buildPrompt({
+                sourceText: trimmedSource,
+                topic: topic,
+                title: `${sessionType} Practice`,
+                questionCount,
+                difficulty,
+                extraInstructions:
+                    "Generate practice questions for this topic.",
+            });
+            const schemaQuestions = await genService._callOpenRouterJSON({
+                model,
+                prompt,
+                questionCount,
+            });
+
+            // Normalize to canonical question format
+            questions = schemaQuestions.map((q) => ({
                 id: q.id || uuid(),
-                type: q.type || "multiple_choice",
-                text: q.question,
-                choices: q.options || [],
+                type: q.type === "multiple_choice" ? "mcq" : q.type || "mcq",
+                question: q.question || q.text || "",
+                options: q.options || q.choices || [],
                 answer: q.answer,
                 explanation: q.explanation || "No explanation provided.",
-                difficulty: targetDifficulty === "adaptive" ? "medium" : targetDifficulty,
-                conceptTags: [topic]
+                difficulty,
+                conceptTags: q.conceptTags || [topic],
             }));
-            source_text = `Topic practice session for: ${topic}`;
-            conceptNames.push(topic); // Add topic as concept for tracking
+            source_text =
+                trimmedSource || `Topic practice session for: ${topic}`;
+            // Collect unique concept tags from AI-generated questions
+            const aiConcepts = new Set();
+            questions.forEach((q) =>
+                (q.conceptTags || []).forEach((t) => aiConcepts.add(t)),
+            );
+            aiConcepts.forEach((c) => {
+                if (!conceptNames.includes(c)) conceptNames.push(c);
+            });
+            if (!conceptNames.includes(topic)) conceptNames.push(topic);
         } else {
             // Generate adaptive questions based on existing concepts
             questions = await adaptiveService.generateQuestions(
                 conceptNames,
                 masteryLevels,
                 questionCount,
-                userId
+                userId,
             );
             source_text = `Adaptive practice session for: ${conceptNames.join(", ")}`;
         }
 
+        // Normalize adaptive-generated questions to canonical format
+        questions = questions.map((q) => ({
+            ...q,
+            question: q.question || q.text || "",
+            options: q.options || q.choices || [],
+            type: q.type === "multiple_choice" ? "mcq" : q.type || "mcq",
+        }));
+        // Remove legacy field names
+        questions = questions.map(({ text, choices, ...rest }) => rest);
+
         // Create test
+        const titleMap = {
+            quick_practice: "Quick Practice",
+            focused_practice: "Focused Practice",
+            mastery_check: "Mastery Check",
+            weak_concepts: "Weak Concepts Review",
+        };
         const testId = uuid();
         const code = generateCode();
         const test = await testRepo.create({
             id: testId,
             code,
-            title: `${
-                sessionType.charAt(0).toUpperCase() + sessionType.slice(1)
-            } Practice`,
+            title:
+                titleMap[sessionType] ||
+                sessionType
+                    .replace(/_/g, " ")
+                    .replace(/\b\w/g, (c) => c.toUpperCase()) + " Practice",
             source_filename: null,
             source_text,
             model: "adaptive",
@@ -404,7 +451,7 @@ export async function createSession(req, res, next) {
             },
             questions_json: questions,
             expires_at: new Date(
-                Date.now() + 24 * 60 * 60 * 1000
+                Date.now() + 24 * 60 * 60 * 1000,
             ).toISOString(),
             time_limit_seconds: questionCount * 60,
             created_by: userId,
@@ -432,7 +479,7 @@ export async function createSession(req, res, next) {
             sessionType,
             concepts: conceptNames.map((name) => {
                 const c = selectedConcepts.find(
-                    (sc) => sc.concept_name === name
+                    (sc) => sc.concept_name === name,
                 );
                 return {
                     name,
@@ -465,7 +512,7 @@ export async function completeSession(req, res, next) {
         if (session.completed_at) {
             throw ApiError.badRequest(
                 "Session already completed",
-                "SESSION_ALREADY_COMPLETED"
+                "SESSION_ALREADY_COMPLETED",
             );
         }
 
@@ -473,9 +520,10 @@ export async function completeSession(req, res, next) {
         const test = await testRepo.findById(session.test_id);
         const questions = JSON.parse(test.questions_json);
 
-        // Grade answers
+        // Grade answers and update mastery per-question
         let correctCount = 0;
-        const conceptChanges = {};
+        // Track cumulative mastery state per concept during this session
+        const conceptState = {};
 
         for (const answer of answers) {
             const question = questions.find((q) => q.id === answer.questionId);
@@ -486,33 +534,55 @@ export async function completeSession(req, res, next) {
                 String(answer.answer).trim().toLowerCase();
             if (isCorrect) correctCount++;
 
-            // Track concept performance
             const concepts = question.conceptTags || [];
             for (const conceptName of concepts) {
-                if (!conceptChanges[conceptName]) {
-                    conceptChanges[conceptName] = {
+                // Initialize concept state on first encounter
+                if (!conceptState[conceptName]) {
+                    let concept = await userConceptRepo.findByUserAndConcept(
+                        userId,
+                        conceptName,
+                    );
+                    if (!concept) {
+                        concept = await userConceptRepo.create({
+                            id: uuid(),
+                            user_id: userId,
+                            concept_name: conceptName,
+                            mastery_level: 0,
+                            total_attempts: 0,
+                            correct_attempts: 0,
+                            difficulty_level: "easy",
+                        });
+                    }
+                    conceptState[conceptName] = {
+                        concept,
+                        originalMastery: concept.mastery_level,
+                        currentMastery: concept.mastery_level,
                         correct: 0,
                         total: 0,
-                        difficulty: question.difficulty,
+                        consecutiveCorrect: concept.consecutive_correct || 0,
+                        consecutiveWrong: concept.consecutive_wrong || 0,
                     };
                 }
-                conceptChanges[conceptName].total++;
-                if (isCorrect) conceptChanges[conceptName].correct++;
-            }
 
-            // Record history
-            for (const conceptName of concepts) {
-                const concept = await userConceptRepo.findByUserAndConcept(
-                    userId,
-                    conceptName
-                );
-                const masteryBefore = concept?.mastery_level || 0;
+                const state = conceptState[conceptName];
+                const masteryBefore = state.currentMastery;
                 const masteryAfter = masteryService.calculateMasteryChange(
                     masteryBefore,
                     question.difficulty || "medium",
-                    isCorrect
+                    isCorrect,
                 );
+                state.currentMastery = masteryAfter;
+                state.total++;
+                if (isCorrect) {
+                    state.correct++;
+                    state.consecutiveCorrect++;
+                    state.consecutiveWrong = 0;
+                } else {
+                    state.consecutiveCorrect = 0;
+                    state.consecutiveWrong++;
+                }
 
+                // Record history for this question
                 await historyRepo.create({
                     id: uuid(),
                     user_id: userId,
@@ -523,71 +593,45 @@ export async function completeSession(req, res, next) {
                     mastery_before: masteryBefore,
                     mastery_after: masteryAfter,
                     time_spent_seconds: Math.floor(
-                        (timeSpent || 0) / answers.length
+                        (timeSpent || 0) / answers.length,
                     ),
                 });
             }
         }
 
-        // Update concept mastery
+        // Persist concept mastery updates
         const masteryUpdates = [];
-        for (const [conceptName, stats] of Object.entries(conceptChanges)) {
-            let concept = await userConceptRepo.findByUserAndConcept(
-                userId,
-                conceptName
-            );
-
-            if (!concept) {
-                // Create new concept
-                concept = await userConceptRepo.create({
-                    id: uuid(),
-                    user_id: userId,
-                    concept_name: conceptName,
-                    mastery_level: 0,
-                    total_attempts: 0,
-                    correct_attempts: 0,
-                    difficulty_level: "easy",
-                });
-            }
-
-            const oldMastery = concept.mastery_level;
-            const avgCorrect = stats.correct / stats.total;
-            const newMastery = masteryService.calculateMasteryChange(
-                oldMastery,
-                stats.difficulty || "medium",
-                avgCorrect > 0.5
-            );
-
-            const consecutiveCorrect =
-                avgCorrect === 1 ? (concept.consecutive_correct || 0) + 1 : 0;
+        for (const [conceptName, state] of Object.entries(conceptState)) {
             const nextReview = masteryService.calculateNextReviewDate(
-                newMastery,
-                consecutiveCorrect
+                state.currentMastery,
+                state.consecutiveCorrect,
             );
 
             await userConceptRepo.update(userId, conceptName, {
-                mastery_level: newMastery,
-                total_attempts: concept.total_attempts + stats.total,
-                correct_attempts: concept.correct_attempts + stats.correct,
+                mastery_level: state.currentMastery,
+                total_attempts: state.concept.total_attempts + state.total,
+                correct_attempts:
+                    state.concept.correct_attempts + state.correct,
                 last_practiced_at: new Date().toISOString(),
                 next_review_due: nextReview,
-                difficulty_level: masteryService.suggestDifficulty(newMastery),
-                consecutive_correct: consecutiveCorrect,
-                consecutive_wrong:
-                    avgCorrect === 0 ? (concept.consecutive_wrong || 0) + 1 : 0,
+                difficulty_level: masteryService.suggestDifficulty(
+                    state.currentMastery,
+                ),
+                consecutive_correct: state.consecutiveCorrect,
+                consecutive_wrong: state.consecutiveWrong,
             });
 
             masteryUpdates.push({
                 concept: conceptName,
-                before: oldMastery,
-                after: newMastery,
-                change: newMastery - oldMastery,
+                before: state.originalMastery,
+                after: state.currentMastery,
+                change: state.currentMastery - state.originalMastery,
             });
         }
 
         // Complete session
         const scorePercentage = Math.round(
-            (correctCount / answers.length) * 100
+            (correctCount / answers.length) * 100,
         );
         await sessionRepo.complete(sessionId, {
             questions_correct: correctCount,
@@ -598,6 +642,7 @@ export async function completeSession(req, res, next) {
         // Check achievements
         const stats = await userConceptRepo.getStats(userId);
         const sessionCount = await sessionRepo.countByUser(userId);
+        const perfectCount = await sessionRepo.countPerfectByUser(userId);
         const streak = await sessionRepo.getStreak(userId);
 
         const newAchievements = await achievementService.checkAchievements(
@@ -606,8 +651,8 @@ export async function completeSession(req, res, next) {
             {
                 sessionCount,
                 perfectSession: scorePercentage === 100,
-                perfectCount: scorePercentage === 100 ? 1 : 0,
-            }
+                perfectCount,
+            },
         );
 
         await achievementService.checkAchievements(userId, "concept_mastered", {
@@ -622,13 +667,13 @@ export async function completeSession(req, res, next) {
         const allConcepts = await userConceptRepo.findByUser(userId);
         const recentHistory = await historyRepo.getRecentWrongAnswers(
             userId,
-            50
+            50,
         );
         const recommendations =
             await recommendationService.getPersonalizedRecommendations(
                 userId,
                 allConcepts,
-                recentHistory
+                recentHistory,
             );
 
         res.json({
@@ -662,7 +707,7 @@ export async function getConceptDetails(req, res, next) {
         const history = await historyRepo.findByUserAndConcept(
             userId,
             name,
-            50
+            50,
         );
         const prerequisites = await conceptRelRepo.findPrerequisites(name);
         const attempts = await testAttemptRepo.listByConcept(userId, name, {
@@ -686,7 +731,7 @@ export async function getConceptDetails(req, res, next) {
                         ? Math.round(
                               (concept.correct_attempts /
                                   concept.total_attempts) *
-                                  100
+                                  100,
                           )
                         : 0,
                 lastPracticed: concept.last_practiced_at,
@@ -739,7 +784,7 @@ export async function getConceptAttempts(req, res, next) {
         }
         const sliced = attempts.slice(
             parseInt(offset),
-            parseInt(offset) + parseInt(limit)
+            parseInt(offset) + parseInt(limit),
         );
 
         res.json({
@@ -815,7 +860,7 @@ export async function queryConceptAttempts(req, res, next) {
         } = req.query;
         logger.info(
             { userId, concept: conceptName, autoEnsure },
-            "queryConceptAttempts hit"
+            "queryConceptAttempts hit",
         );
         if (!conceptName) {
             return res.status(400).json({
@@ -827,7 +872,7 @@ export async function queryConceptAttempts(req, res, next) {
         }
         const concept = await userConceptRepo.findByUserAndConcept(
             userId,
-            conceptName
+            conceptName,
         );
         if (!concept) {
             // return empty instead of 404 so frontend can treat as no data
@@ -842,7 +887,7 @@ export async function queryConceptAttempts(req, res, next) {
         let attempts = await testAttemptRepo.listByConcept(
             userId,
             conceptName,
-            { includeInProgress: true }
+            { includeInProgress: true },
         );
         if (!attempts.length && String(autoEnsure) === "1") {
             // Attempt auto seed
@@ -867,7 +912,7 @@ export async function queryConceptAttempts(req, res, next) {
                 params_json: { concepts: [conceptName], seed: true },
                 questions_json: [question],
                 expires_at: new Date(
-                    Date.now() + 6 * 60 * 60 * 1000
+                    Date.now() + 6 * 60 * 60 * 1000,
                 ).toISOString(),
                 time_limit_seconds: 300,
                 created_by: userId,
@@ -885,12 +930,12 @@ export async function queryConceptAttempts(req, res, next) {
             attempts = await testAttemptRepo.listByConcept(
                 userId,
                 conceptName,
-                { includeInProgress: true }
+                { includeInProgress: true },
             );
         }
         const sliced = attempts.slice(
             parseInt(offset),
-            parseInt(offset) + parseInt(limit)
+            parseInt(offset) + parseInt(limit),
         );
         res.json({
             concept: conceptName,
@@ -935,7 +980,7 @@ export async function getProgressChart(req, res, next) {
             data.length >= 2
                 ? masteryService.calculateImprovement(
                       data[0].avg_mastery,
-                      data[data.length - 1].avg_mastery
+                      data[data.length - 1].avg_mastery,
                   )
                 : 0;
 
@@ -967,7 +1012,7 @@ export async function getRecommendations(req, res, next) {
             await recommendationService.getPersonalizedRecommendations(
                 userId,
                 concepts,
-                history
+                history,
             );
 
         res.json({ recommendations });
@@ -979,14 +1024,21 @@ export async function getRecommendations(req, res, next) {
 export async function getAchievements(req, res, next) {
     try {
         const userId = req.user.id;
-        const progress = await achievementService.getAchievementProgress(
-            userId
-        );
+        const progress =
+            await achievementService.getAchievementProgress(userId);
         const stats = await userConceptRepo.getStats(userId);
-        const sessionCount = await sessionRepo.countByUser(userId);
 
-        const currentLevel = Math.min(6, Math.floor(stats.mastered_count / 10) + 1);
-        const nextMilestone = Math.ceil((stats.mastered_count + 1) / 10) * 10;
+        // Level: every 5 mastered concepts = +1 level
+        const currentLevel = Math.min(
+            20,
+            Math.floor(stats.mastered_count / 5) + 1,
+        );
+        const nextMilestone = Math.ceil((stats.mastered_count + 1) / 5) * 5;
+
+        // Build icon/category lookup from achievement definitions
+        const defs = AchievementService.ACHIEVEMENTS;
+        const findDef = (name) =>
+            Object.values(defs).find((d) => d.name === name) || {};
 
         res.json({
             level: {
@@ -1000,24 +1052,39 @@ export async function getAchievements(req, res, next) {
             },
             totalEarned: progress.earnedCount,
             totalAvailable: progress.totalCount,
-            earned: progress.earned.map((a) => ({
-                achievement_type: a.achievement_type,
-                name: a.achievement_name,
-                description: a.description,
-                progress: a.progress,
-                progress_total: a.progress_total,
-                earnedAt: a.earned_at,
-            })),
-            inProgress: progress.inProgress.map((a) => ({
-                achievement_type: a.achievement_type,
-                name: a.achievement_name,
-                description: a.description,
-                progress: a.progress,
-                progress_total: a.progress_total,
-                percentage: a.progress_total > 0
-                    ? Math.round((a.progress / a.progress_total) * 100)
-                    : 0,
-            })),
+            earned: progress.earned.map((a) => {
+                const def = findDef(a.achievement_name);
+                return {
+                    achievement_type: a.achievement_type,
+                    name: a.achievement_name,
+                    description: a.description,
+                    progress: a.progress,
+                    progress_total: a.progress_total,
+                    earnedAt: a.earned_at,
+                    icon: def.icon || "🏅",
+                    category: def.category || "other",
+                };
+            }),
+            inProgress: [...progress.inProgress, ...progress.locked].map(
+                (a) => {
+                    const def = findDef(a.achievement_name);
+                    return {
+                        achievement_type: a.achievement_type,
+                        name: a.achievement_name,
+                        description: a.description,
+                        progress: a.progress,
+                        progress_total: a.progress_total,
+                        percentage:
+                            a.progress_total > 0
+                                ? Math.round(
+                                      (a.progress / a.progress_total) * 100,
+                                  )
+                                : 0,
+                        icon: def.icon || "🏅",
+                        category: def.category || "other",
+                    };
+                },
+            ),
         });
     } catch (e) {
         next(e);
@@ -1032,7 +1099,7 @@ export async function getSessionHistory(req, res, next) {
         const sessions = await sessionRepo.findByUser(
             userId,
             parseInt(limit),
-            parseInt(offset)
+            parseInt(offset),
         );
         const total = await sessionRepo.countByUser(userId);
 

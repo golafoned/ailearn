@@ -21,7 +21,7 @@ export function MyAttemptDetailPage() {
             await fetchAttemptDetail(attemptId);
         } catch (e) {
             setError(
-                e instanceof ApiError ? e.message : "Failed to load attempt"
+                e instanceof ApiError ? e.message : "Failed to load attempt",
             );
         } finally {
             setLoading(false);
@@ -52,10 +52,10 @@ export function MyAttemptDetailPage() {
     return (
         <div className="max-w-4xl mx-auto px-4 py-24 sm:py-32">
             <button
-                onClick={() => navigate("/dashboard")}
+                onClick={() => navigate("/learning")}
                 className="inline-flex items-center text-blue-600 hover:text-blue-700 mb-6 transition-colors"
             >
-                <span className="mr-2">←</span> Back to Dashboard
+                <span className="mr-2">←</span> Back to Learning
             </button>
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6">
@@ -75,7 +75,7 @@ export function MyAttemptDetailPage() {
                                 <span className="font-medium">Submitted:</span>
                                 {detail.submittedAt
                                     ? new Date(
-                                          detail.submittedAt
+                                          detail.submittedAt,
                                       ).toLocaleString()
                                     : "—"}
                             </span>

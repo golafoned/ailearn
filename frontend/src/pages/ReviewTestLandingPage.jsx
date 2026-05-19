@@ -15,6 +15,7 @@ export function ReviewTestLandingPage() {
         error,
         startAttempt,
         attempt,
+        setAttempt,
     } = useTestData();
     const [participantName, setParticipantName] = useState("");
     const [displayName, setDisplayName] = useState("");
@@ -25,9 +26,15 @@ export function ReviewTestLandingPage() {
     const [testStatusCode, setTestStatusCode] = useState(null);
     const [isForbidden, setIsForbidden] = useState(false); // Track if user is not the owner
 
+    // Clear stale attempt and test data when navigating to a new test code
     useEffect(() => {
+        setAttempt(null);
+        autoStartedRef.current = false;
+        setTestStatusCode(null);
+        setStartError(null);
+        setIsForbidden(false);
         if (code) fetchTestByCode(code.toUpperCase());
-    }, [code, fetchTestByCode]);
+    }, [code, fetchTestByCode, setAttempt]);
 
     const onStart = async (e) => {
         if (e) e.preventDefault();
@@ -66,10 +73,10 @@ export function ReviewTestLandingPage() {
             ) {
                 setIsForbidden(true);
                 setStartError(
-                    "You cannot start this review test. It belongs to another user."
+                    "You cannot start this review test. It belongs to another user.",
                 );
                 toast.error(
-                    "You cannot start this review test. It belongs to another user."
+                    "You cannot start this review test. It belongs to another user.",
                 );
             } else if (/TEST_EXPIRED/.test(msg)) {
                 setTestStatusCode("TEST_EXPIRED");
@@ -166,7 +173,7 @@ export function ReviewTestLandingPage() {
                             • {currentTest.questions?.length || 0} questions •{" "}
                             {currentTest.timeLimitSeconds
                                 ? `${Math.round(
-                                      currentTest.timeLimitSeconds / 60
+                                      currentTest.timeLimitSeconds / 60,
                                   )} min`
                                 : "No time limit"}
                         </p>

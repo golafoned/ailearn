@@ -35,7 +35,7 @@ export class TestGenerationService {
             process.env.DRY_RUN_AI = "true";
         }
         const expires_at = new Date(
-            Date.now() + expiresInMinutes * 60000
+            Date.now() + expiresInMinutes * 60000,
         ).toISOString();
         const code = generateCode();
         const model = process.env.OPENROUTER_MODEL || "openai/gpt-4o-mini";
@@ -101,7 +101,9 @@ export class TestGenerationService {
         const test = await testRepo.create({
             id: uuid(),
             code,
-            title: title || (topic ? `Test: ${topic.slice(0, 80)}` : "Generated Test"),
+            title:
+                title ||
+                (topic ? `Test: ${topic.slice(0, 80)}` : "Generated Test"),
             source_filename: filename || null,
             source_text: (sourceText || topic || "").slice(0, 20000),
             model,
@@ -119,7 +121,7 @@ export class TestGenerationService {
         if (!apiKey)
             throw ApiError.internal(
                 "Missing OPENROUTER_API_KEY",
-                "MISSING_API_KEY"
+                "MISSING_API_KEY",
             );
         const wantSchema = process.env.AI_SCHEMA_JSON !== "false";
         const schema = {
@@ -142,9 +144,33 @@ export class TestGenerationService {
                                 items: { type: "string" },
                             },
                             answer: { type: "string" },
+                            explanation: {
+                                type: "string",
+                                description:
+                                    "Conceptual reasoning why the answer is correct, 40-400 chars",
+                            },
+                            reference: {
+                                type: "string",
+                                description:
+                                    "Short quote from source material supporting the answer, or null",
+                            },
                             difficulty: { type: "string" },
+                            conceptTags: {
+                                type: "array",
+                                items: { type: "string" },
+                                description:
+                                    "1-3 specific concepts tested by this question",
+                            },
                         },
-                        required: ["id", "type", "question"],
+                        required: [
+                            "id",
+                            "type",
+                            "question",
+                            "answer",
+                            "options",
+                            "explanation",
+                            "conceptTags",
+                        ],
                         additionalProperties: true,
                     },
                     minItems: 1,
@@ -157,20 +183,29 @@ export class TestGenerationService {
         const baseMessages = [
             {
                 role: "system",
-                content: "You output ONLY JSON. No prose. No explanations.",
+                content:
+                    'You are an expert educational quiz generator. Output ONLY valid JSON with a "questions" array. No prose, no markdown, no explanations outside the JSON. Match the language of the source material or topic exactly.',
             },
             {
                 role: "user",
-                content: `${prompt}\nOutput strictly the JSON object with a questions array.`,
+                content: `${prompt}\n\nOutput strictly the JSON object with a questions array. Every question must have: id, type, question, options, answer, explanation, conceptTags.`,
             },
         ];
 
-        const bodyWithSchema = {
+        const bodyWithSchemaStrict = {
             model,
             messages: baseMessages,
             response_format: {
                 type: "json_schema",
                 json_schema: { name: "quiz", strict: true, schema },
+            },
+        };
+        const bodyWithSchema = {
+            model,
+            messages: baseMessages,
+            response_format: {
+                type: "json_schema",
+                json_schema: { name: "quiz", schema },
             },
         };
         const bodyNoSchema = {
@@ -191,7 +226,7 @@ export class TestGenerationService {
         async function doRequest(body, label) {
             const res = await fetch(
                 "https://openrouter.ai/api/v1/chat/completions",
-                { method: "POST", headers, body: JSON.stringify(body) }
+                { method: "POST", headers, body: JSON.stringify(body) },
             );
             const text = await res.text();
             let json;
@@ -204,7 +239,10 @@ export class TestGenerationService {
         }
 
         const attempts = [];
-        if (wantSchema) attempts.push(["schema", bodyWithSchema]);
+        if (wantSchema) {
+            attempts.push(["schema-strict", bodyWithSchemaStrict]);
+            attempts.push(["schema", bodyWithSchema]);
+        }
         attempts.push(["fallback", bodyNoSchema]);
 
         let lastErr;
@@ -212,15 +250,15 @@ export class TestGenerationService {
             const resp = await doRequest(body, label);
             if (!resp.ok) {
                 if (
-                    label === "schema" &&
+                    (label === "schema-strict" || label === "schema") &&
                     resp.status === 400 &&
                     /response_format/i.test(resp.text)
                 ) {
                     logger.warn(
-                        { status: resp.status },
-                        "Schema unsupported by model, retrying without schema"
+                        { status: resp.status, label },
+                        "Schema format unsupported by model, trying next format",
                     );
-                    lastErr = new Error("Schema unsupported");
+                    lastErr = new Error("Schema format unsupported");
                     continue;
                 }
                 logger.error(
@@ -229,7 +267,7 @@ export class TestGenerationService {
                         raw: resp.text.slice(0, 500),
                         label,
                     },
-                    "OpenRouter error"
+                    "OpenRouter error",
                 );
                 lastErr = new Error(`AI generation failed (${label})`);
                 continue;
@@ -240,7 +278,7 @@ export class TestGenerationService {
                 if (!Array.isArray(parsed.questions))
                     throw ApiError.internal(
                         "Missing questions[]",
-                        "AI_MALFORMED_RESPONSE"
+                        "AI_MALFORMED_RESPONSE",
                     );
                 // Do not enforce count here; post-processing will handle exact count and padding
                 return parsed.questions.map((q) => ({
@@ -256,7 +294,7 @@ export class TestGenerationService {
                             resp.json?.choices?.[0]?.message?.content || ""
                         ).slice(0, 200),
                     },
-                    "Parse failed"
+                    "Parse failed",
                 );
                 lastErr = new Error(`Invalid AI JSON (${label}): ${e.message}`);
                 continue;
@@ -305,7 +343,7 @@ export class TestGenerationService {
         }
         throw ApiError.internal(
             "Unable to parse JSON content",
-            "AI_PARSE_FAILURE"
+            "AI_PARSE_FAILURE",
         );
     }
 
@@ -331,16 +369,92 @@ export class TestGenerationService {
         difficulty,
         extraInstructions,
     }) {
+        const langHint = this._detectLanguageHint(sourceText || topic || "");
+
         // Topic-only mode: generate from topic without source material
         if (!sourceText && topic) {
-            return `You are an educational quiz generator. Produce EXACTLY ${questionCount} questions (no more, no fewer) at ${difficulty} difficulty about the topic: "${topic}".\nRequirements:\n- Prefer multiple-choice (4 distinct plausible options) when feasible; may mix short or true/false.\n- Each question object MUST include: id (uuid acceptable), type, question, options (array, empty if not MCQ), answer (string), explanation (why correct answer is correct; 40-400 chars), reference (short snippet or null).\n- Questions should cover different aspects of the topic, from fundamentals to applied knowledge.\n- Explanations must not simply restate the question; they should give conceptual reasoning.\n- Do NOT leak answers inside explanation for true/false beyond minimal rationale.\n- Avoid duplicate explanations; keep them specific.\n- Output ONLY JSON with {\n  \"questions\": [ { ... } ]\n}.\nTitle: ${title}\nExtra Instructions: ${
-                extraInstructions || "None"
-            }`;
+            return [
+                `You are an expert educational quiz generator.`,
+                `Produce EXACTLY ${questionCount} questions (no more, no fewer) at ${difficulty} difficulty about the topic: "${topic}".`,
+                langHint
+                    ? `CRITICAL: Generate ALL questions, ALL answer options, and ALL explanations in ${langHint}. The topic name is in ${langHint} — match that language exactly.`
+                    : "",
+                ``,
+                `Requirements:`,
+                `- Mix question types: prefer multiple-choice (type "mcq", 4 distinct plausible options), but include some true/false (type "truefalse") and short-answer (type "short").`,
+                `- Each question MUST include: id (string), type ("mcq"|"truefalse"|"short"), question (string), options (array of strings, empty for non-MCQ), answer (string — the correct answer text), explanation (40-400 chars, conceptual reasoning why the answer is correct), reference (short snippet or null).`,
+                `- Each question MUST include conceptTags: an array of 1-3 specific concepts tested by this question (e.g. "Київська Русь", "Козацтво", "Photosynthesis"). Be specific, not broad.`,
+                `- Cover different aspects of the topic, from fundamentals to applied knowledge.`,
+                `- Explanations must give conceptual reasoning, not just restate the answer.`,
+                `- For true/false: do NOT reveal the answer in the explanation.`,
+                `- All explanations must be unique and specific to each question.`,
+                `- Output ONLY valid JSON: { "questions": [ { ... } ] }`,
+                ``,
+                `Title: ${title}`,
+                extraInstructions
+                    ? `Extra Instructions: ${extraInstructions}`
+                    : "",
+            ]
+                .filter(Boolean)
+                .join("\n");
         }
+
         // Source text mode: generate from provided material
-        return `You are an educational quiz generator. Produce EXACTLY ${questionCount} questions (no more, no fewer) at ${difficulty} difficulty derived ONLY from the provided material.\nRequirements:\n- Prefer multiple-choice (4 distinct plausible options) when feasible; may mix short or true/false.\n- Each question object MUST include: id (uuid acceptable), type, question, options (array, empty if not MCQ), answer (string), explanation (why correct answer is correct; 40-400 chars), reference (short snippet or null).\n- Explanations must not simply restate the question; they should give conceptual reasoning.\n- Do NOT leak answers inside explanation for true/false beyond minimal rationale.\n- Avoid duplicate explanations; keep them specific.\n- Output ONLY JSON with {\n  \"questions\": [ { ... } ]\n}.\nTitle: ${title}\nMaterial Start:\n${sourceText}\nMaterial End.\nExtra Instructions: ${
-            extraInstructions || "None"
-        }`;
+        return [
+            `You are an expert educational quiz generator.`,
+            `Produce EXACTLY ${questionCount} questions (no more, no fewer) at ${difficulty} difficulty.`,
+            `CRITICAL: Generate questions ONLY from the provided source material below. Do NOT use outside knowledge. Every question must be answerable from the material.`,
+            langHint
+                ? `CRITICAL: The source material is in ${langHint}. Generate ALL questions, ALL answer options, and ALL explanations in ${langHint}. Match the language of the source material exactly.`
+                : "",
+            topic
+                ? `Focus area: "${topic}" — prioritize content related to this topic within the material.`
+                : "",
+            ``,
+            `Requirements:`,
+            `- Mix question types: prefer multiple-choice (type "mcq", 4 distinct plausible options), but include some true/false (type "truefalse") and short-answer (type "short").`,
+            `- Each question MUST include: id (string), type ("mcq"|"truefalse"|"short"), question (string), options (array of strings, empty for non-MCQ), answer (string — the correct answer text), explanation (40-400 chars, conceptual reasoning why the answer is correct), reference (exact quote from the source material that supports the answer, 20-150 chars).`,
+            `- Each question MUST include conceptTags: an array of 1-3 specific concepts tested by this question. Extract concept names from the material (e.g. "Київська Русь", "Козацтво", "Трипільська культура"). Be specific.`,
+            `- Cover different sections and key facts from the material.`,
+            `- Explanations must give conceptual reasoning, not just restate the answer.`,
+            `- For true/false: do NOT reveal the answer in the explanation.`,
+            `- All explanations must be unique and specific to each question.`,
+            `- Output ONLY valid JSON: { "questions": [ { ... } ] }`,
+            ``,
+            `Title: ${title}`,
+            ``,
+            `=== SOURCE MATERIAL START ===`,
+            sourceText,
+            `=== SOURCE MATERIAL END ===`,
+            extraInstructions ? `Extra Instructions: ${extraInstructions}` : "",
+        ]
+            .filter(Boolean)
+            .join("\n");
+    }
+
+    /** Simple language detection heuristic based on Unicode script ranges */
+    _detectLanguageHint(text) {
+        if (!text) return null;
+        const sample = text.slice(0, 500);
+        // Count character types
+        const cyrillic = (sample.match(/[\u0400-\u04FF]/g) || []).length;
+        const latin = (sample.match(/[A-Za-z]/g) || []).length;
+        const cjk = (
+            sample.match(/[\u4E00-\u9FFF\u3040-\u30FF\uAC00-\uD7AF]/g) || []
+        ).length;
+        const arabic = (sample.match(/[\u0600-\u06FF]/g) || []).length;
+
+        if (cjk > 10) return "the same language as the source (CJK)";
+        if (arabic > 10) return "Arabic";
+        if (cyrillic > latin) {
+            // Distinguish Ukrainian vs Russian by specific Ukrainian letters
+            const ukrainian = (sample.match(/[іїєґІЇЄҐ]/g) || []).length;
+            return ukrainian > 2
+                ? "Ukrainian (українською мовою)"
+                : "the same Cyrillic language as the source material";
+        }
+        if (latin > 20) return null; // English is default, no special instruction needed
+        return null;
     }
 
     _synthesizeExplanation(question, sourceText) {

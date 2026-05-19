@@ -66,7 +66,7 @@ export function LearningProvider({ children }) {
                 if (offset) params.append("offset", offset);
 
                 const data = await apiFetch(
-                    `/api/v1/learning/concepts?${params}`
+                    `/api/v1/learning/concepts?${params}`,
                 );
                 setConcepts(data.concepts || []);
                 return data;
@@ -81,7 +81,7 @@ export function LearningProvider({ children }) {
                 setConceptsLoading(false);
             }
         },
-        [toast]
+        [toast],
     );
 
     const fetchConceptDetails = useCallback(
@@ -89,8 +89,8 @@ export function LearningProvider({ children }) {
             try {
                 const data = await apiFetch(
                     `/api/v1/learning/concepts/${encodeURIComponent(
-                        conceptName
-                    )}/details`
+                        conceptName,
+                    )}/details`,
                 );
                 // Backend now returns richer structure (concept, history, attempts, prerequisites, relatedConcepts)
                 setConceptDetails(data);
@@ -104,7 +104,7 @@ export function LearningProvider({ children }) {
                 throw e;
             }
         },
-        [toast]
+        [toast],
     );
 
     const fetchWeakConcepts = useCallback(async () => {
@@ -142,8 +142,8 @@ export function LearningProvider({ children }) {
                 const params = new URLSearchParams({ limit, offset });
                 const data = await apiFetch(
                     `/api/v1/learning/concepts/${encodeURIComponent(
-                        conceptName
-                    )}/attempts?${params}`
+                        conceptName,
+                    )}/attempts?${params}`,
                 );
                 setConceptAttempts((prev) => ({
                     ...prev,
@@ -161,7 +161,7 @@ export function LearningProvider({ children }) {
                             autoEnsure: "1",
                         });
                         const fallback = await apiFetch(
-                            `/api/v1/learning/concept-attempts?${qParams}`
+                            `/api/v1/learning/concept-attempts?${qParams}`,
                         );
                         setConceptAttempts((prev) => ({
                             ...prev,
@@ -184,7 +184,7 @@ export function LearningProvider({ children }) {
                 setConceptAttemptsLoading(false);
             }
         },
-        [toast, conceptAttempts, failedConceptAttemptsRef]
+        [toast, conceptAttempts, failedConceptAttemptsRef],
     );
 
     const fetchDueReviews = useCallback(async () => {
@@ -206,7 +206,7 @@ export function LearningProvider({ children }) {
         async (period = "month") => {
             try {
                 const data = await apiFetch(
-                    `/api/v1/learning/progress-chart?period=${period}`
+                    `/api/v1/learning/progress-chart?period=${period}`,
                 );
                 setProgressChart(data);
                 return data;
@@ -219,7 +219,7 @@ export function LearningProvider({ children }) {
                 throw e;
             }
         },
-        [toast]
+        [toast],
     );
 
     // ==================== Practice Session APIs ====================
@@ -230,7 +230,10 @@ export function LearningProvider({ children }) {
             conceptSelection,
             customConcepts,
             difficulty,
+            targetDifficulty,
             questionCount,
+            sourceText,
+            topic,
         }) => {
             try {
                 const data = await apiFetch(
@@ -241,14 +244,16 @@ export function LearningProvider({ children }) {
                             sessionType,
                             conceptSelection,
                             customConcepts,
-                            difficulty,
+                            difficulty: difficulty || targetDifficulty,
                             questionCount,
+                            sourceText,
+                            topic,
                         },
-                    }
+                    },
                 );
                 setCurrentSession(data);
                 toast.success(
-                    `✨ Created ${sessionType} session with ${data.questionCount} questions!`
+                    `✨ Created ${sessionType} session with ${data.questionCount} questions!`,
                 );
                 return data;
             } catch (e) {
@@ -260,7 +265,7 @@ export function LearningProvider({ children }) {
                 throw e;
             }
         },
-        [toast]
+        [toast],
     );
 
     const completeSession = useCallback(
@@ -274,7 +279,7 @@ export function LearningProvider({ children }) {
                             answers,
                             timeSpent,
                         },
-                    }
+                    },
                 );
                 toast.success(`🎉 Session complete! Score: ${data.score}%`);
                 setCurrentSession(null);
@@ -288,7 +293,7 @@ export function LearningProvider({ children }) {
                 throw e;
             }
         },
-        [toast]
+        [toast],
     );
 
     const adaptDifficulty = useCallback(
@@ -303,7 +308,7 @@ export function LearningProvider({ children }) {
                             currentQuestionIndex,
                             recentAnswers,
                         },
-                    }
+                    },
                 );
                 return data;
             } catch (e) {
@@ -312,7 +317,7 @@ export function LearningProvider({ children }) {
                 return null;
             }
         },
-        []
+        [],
     );
 
     const fetchSessionHistory = useCallback(
@@ -320,7 +325,7 @@ export function LearningProvider({ children }) {
             try {
                 const params = new URLSearchParams({ limit, offset });
                 const data = await apiFetch(
-                    `/api/v1/learning/sessions/history?${params}`
+                    `/api/v1/learning/sessions/history?${params}`,
                 );
                 setSessionHistory(data.sessions || []);
                 return data;
@@ -333,7 +338,7 @@ export function LearningProvider({ children }) {
                 throw e;
             }
         },
-        [toast]
+        [toast],
     );
 
     // ==================== Achievements & Recommendations ====================
@@ -374,9 +379,9 @@ export function LearningProvider({ children }) {
             try {
                 const data = await apiFetch(
                     `/api/v1/learning/concepts/${encodeURIComponent(
-                        conceptName
+                        conceptName,
                     )}/attempts/ensure`,
-                    { method: "POST" }
+                    { method: "POST" },
                 );
                 return data;
             } catch (e) {
@@ -388,7 +393,7 @@ export function LearningProvider({ children }) {
                 throw e;
             }
         },
-        [toast]
+        [toast],
     );
 
     // ==================== Utility Functions ====================

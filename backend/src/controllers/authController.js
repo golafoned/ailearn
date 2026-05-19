@@ -1,9 +1,14 @@
 import { AuthService } from "../services/authService.js";
 import { UserRepository } from "../repositories/userRepository.js";
+import { AchievementService } from "../services/achievementService.js";
+import { UserAchievementRepository } from "../repositories/achievementConceptRepositories.js";
 import { ApiError } from "../utils/ApiError.js";
 
 const authService = new AuthService();
 const userRepo = new UserRepository();
+const achievementService = new AchievementService(
+    new UserAchievementRepository(),
+);
 
 export async function register(req, res, next) {
     try {
@@ -13,6 +18,8 @@ export async function register(req, res, next) {
             password,
             displayName,
         });
+        // Initialize all achievements for the new user
+        await achievementService.initializeAchievements(user.id);
         res.status(201).json({ user });
     } catch (e) {
         next(e);
@@ -72,11 +79,11 @@ export async function updateMe(req, res, next) {
         if (!displayName || displayName.length < 1 || displayName.length > 50)
             throw ApiError.badRequest(
                 "INVALID_DISPLAY_NAME",
-                "Invalid displayName"
+                "Invalid displayName",
             );
         const updated = await userRepo.updateDisplayName(
             req.user.id,
-            displayName
+            displayName,
         );
         const { id, email, display_name, created_at } = updated;
         res.json({
